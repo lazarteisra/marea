@@ -17,6 +17,11 @@ export function ajustesPorDefecto() {
   };
 }
 
+/** La app como recién instalada: sin movimientos, saldos en cero, sin configurar. */
+export function datosVacios() {
+  return { cuentas: cuentasPorDefecto(), movimientos: [], ajustes: ajustesPorDefecto() };
+}
+
 const copia = (x) => structuredClone(x);
 
 /** Doble en memoria con la misma interfaz que el almacén real. Para pruebas. */

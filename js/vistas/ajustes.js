@@ -2,6 +2,7 @@
 import { el } from '../dom.js';
 import { exportar, validarRespaldo } from '../respaldo.js';
 import { claveDia } from '../fechas.js';
+import { datosVacios } from '../almacen.js';
 
 const TAM_MAX = 5 * 1024 * 1024;
 
@@ -72,6 +73,23 @@ export function ajustes(ctx) {
       el('button', { class: 'enlace', type: 'button', onclick: () => decir('No se importó nada.') }, 'Cancelar'));
   });
 
+  // --- empezar de cero ---
+  const estadoCero = el('div', { class: 'estado', 'aria-live': 'polite' });
+  function pedirBorrado() {
+    estadoCero.replaceChildren(
+      el('p', {}, '¿Seguro? Se borran todos tus movimientos y saldos de este teléfono y no se puede deshacer.'),
+      el('button', { class: 'boton boton-sec', type: 'button', onclick: async () => {
+        try {
+          await ctx.almacen.reemplazarTodo(datosVacios());
+          await ctx.recargar();
+          ctx.ir('primeraVez');
+        } catch {
+          estadoCero.replaceChildren('No se pudo borrar. Tus datos no cambiaron.');
+        }
+      } }, 'Sí, borrar todo'),
+      el('button', { class: 'enlace', type: 'button', onclick: () => estadoCero.replaceChildren('No se borró nada.') }, 'Cancelar'));
+  }
+
   return el('section', { class: 'pantalla' },
     el('div', { class: 'barra-sup' },
       el('button', { class: 'enlace', type: 'button', onclick: () => ctx.ir('inicio') }, 'Volver')),
@@ -89,5 +107,11 @@ export function ajustes(ctx) {
       el('p', {}, 'Tus datos viven solo en este teléfono. Guarda una copia de vez en cuando para no perderlos.'),
       el('button', { class: 'boton boton-sec', type: 'button', onclick: exportarDatos }, 'Exportar mis datos'),
       el('button', { class: 'boton boton-sec', type: 'button', onclick: () => selector.click() }, 'Importar datos'),
-      selector, estado));
+      selector, estado),
+
+    el('div', { class: 'seccion' },
+      el('h2', {}, 'Empezar de cero'),
+      el('p', {}, 'Borra todo y vuelve a pedirte tus saldos. Si quieres conservar lo que hay, exporta una copia antes.'),
+      el('button', { class: 'boton boton-sec', type: 'button', onclick: pedirBorrado }, 'Borrar todos mis datos'),
+      estadoCero));
 }
