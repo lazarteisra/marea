@@ -2,7 +2,7 @@
 import { el } from '../dom.js';
 import { aCentavos } from '../dinero.js';
 import { resumen, avisoGasto } from '../calculo.js';
-import { ordenarPorUso, partesAviso, crearGuardador } from '../registro.js';
+import { ordenarPorUso, partesAviso, crearGuardador, detallesRecientes } from '../registro.js';
 import { campoMonto, grupoChips, horaCorta } from './piezas.js';
 
 export function registrar(ctx) {
@@ -19,10 +19,19 @@ export function registrar(ctx) {
   const paraQuien = grupoChips('¿Para quién?', [{ valor: 'mi', texto: 'Para mí' }, { valor: 'invite', texto: 'Invité yo' }], 'mi', actualizar);
   const conQue = grupoChips('¿Con qué pagaste?', activas.map((c) => ({ valor: c.id, texto: c.nombre })), cuentaInicial, actualizar);
 
-  const nota = el('input', { class: 'nota', maxlength: 200, placeholder: 'Nota (opcional)', 'aria-label': 'Nota', autocomplete: 'off', hidden: true });
-  const abrirNota = el('button', { class: 'enlace', type: 'button', onclick: () => { nota.hidden = false; abrirNota.hidden = true; nota.focus(); } }, 'Añadir una nota');
+  // "¿Qué fue?": siempre a la vista y opcional. Lo ya escrito antes se repite con un toque.
+  const nota = el('input', { class: 'nota', maxlength: 200, placeholder: 'Ej.: baño, pollo, cadena de la moto', 'aria-label': '¿Qué fue exactamente? (opcional)', autocomplete: 'off', enterkeyhint: 'done' });
+  const sugeridos = el('div', { class: 'chips chips-mini' });
+  let categoriaVista;
+  function pintarSugeridos() {
+    if (categoriaVista === enQue.valor()) return;
+    categoriaVista = enQue.valor();
+    sugeridos.replaceChildren(...detallesRecientes(movimientos, categoriaVista).map((texto) =>
+      el('button', { class: 'chip chip-mini', type: 'button', onclick: () => { nota.value = texto; } }, texto)));
+  }
 
   function actualizar() {
+    pintarSugeridos();
     const centavos = aCentavos(monto.entrada.value);
     guardarBoton.disabled = centavos === null || enQue.valor() === null;
     if (centavos === null) { aviso.replaceChildren(); return; }
@@ -50,7 +59,8 @@ export function registrar(ctx) {
     el('div', { class: 'barra-sup' },
       el('button', { class: 'enlace', type: 'button', onclick: () => ctx.ir('inicio') }, 'Cancelar'),
       el('span', {}, horaCorta(ctx.ahora()))),
-    monto.nodo, enQue.nodo, paraQuien.nodo, conQue.nodo,
-    el('div', {}, abrirNota, nota),
-    el('div', { class: 'pie' }, aviso, guardarBoton));
+    monto.nodo, enQue.nodo,
+    el('div', {}, el('h2', { class: 'preg' }, '¿Qué fue exactamente? (opcional)'), nota, sugeridos),
+    paraQuien.nodo, conQue.nodo,
+    el('div', { class: 'pie pie-fijo' }, aviso, guardarBoton));
 }

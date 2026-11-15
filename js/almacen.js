@@ -6,10 +6,33 @@ export function cuentasPorDefecto() {
   }));
 }
 
+export const CATEGORIAS = ['Comida', 'Pasaje', 'Gasolina', 'Moto', 'Parqueo', 'Megas', 'Salida', 'Motel/Hotel', 'Gimnasio', 'Proyectos', 'Otro'];
+const RENOMBRADAS = { Hotel: 'Motel/Hotel' };
+
+/**
+ * Pone al día datos guardados con una lista de categorías anterior:
+ * renombra las que cambiaron (también en los movimientos) y añade las
+ * nuevas antes de "Otro". Aplicarla dos veces no cambia nada.
+ */
+export function ponerAlDia(datos) {
+  const nombre = (c) => RENOMBRADAS[c] ?? c;
+  const categorias = [...new Set(datos.ajustes.categorias.map(nombre))];
+  for (const c of CATEGORIAS) {
+    if (categorias.includes(c)) continue;
+    const otro = categorias.indexOf('Otro');
+    categorias.splice(otro === -1 ? categorias.length : otro, 0, c);
+  }
+  return {
+    ...datos,
+    ajustes: { ...datos.ajustes, categorias },
+    movimientos: datos.movimientos.map((m) => (m.categoria in RENOMBRADAS ? { ...m, categoria: nombre(m.categoria) } : m)),
+  };
+}
+
 export function ajustesPorDefecto() {
   return {
     diaMensualidad: 1,
-    categorias: ['Comida', 'Pasaje', 'Parqueo', 'Megas', 'Salida', 'Hotel', 'Gimnasio', 'Otro'],
+    categorias: [...CATEGORIAS],
     origenes: ['Mensualidad', 'Delivery', 'Arreglo', 'Código', 'Otro'],
     ultimaCuentaId: null,
     inicio: null,        // día en que empezó a usar la app, "2026-11-14"
@@ -31,11 +54,11 @@ export function crearAlmacenMemoria() {
   let movimientos = new Map();
   return {
     async cargar() {
-      return {
+      return ponerAlDia({
         cuentas: copia(cuentas ?? cuentasPorDefecto()),
         movimientos: copia([...movimientos.values()]),
         ajustes: copia(ajustes ?? ajustesPorDefecto()),
-      };
+      });
     },
     async guardarCuentas(nuevas) { cuentas = copia(nuevas); },
     async guardarAjustes(nuevos) { ajustes = copia(nuevos); },
@@ -106,11 +129,11 @@ export async function abrirAlmacen() {
         pedir(t.objectStore('movimientos').getAll()),
         pedir(t.objectStore('ajustes').get('ajustes')),
       ]);
-      return {
+      return ponerAlDia({
         cuentas: cuentas.length ? cuentas.sort((a, b) => a.orden - b.orden) : cuentasPorDefecto(),
         movimientos: movimientos.sort((a, b) => a.fecha - b.fecha),
         ajustes: { ...ajustesPorDefecto(), ...(ajustes ?? {}) },
-      };
+      });
     },
     async guardarCuentas(cuentas) {
       const t = await tx(['cuentas'], 'readwrite');

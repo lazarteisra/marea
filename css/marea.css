@@ -72,6 +72,14 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--mar); outli
 .boton-sec:active { background: var(--capa); }
 
 .pie { margin-top: auto; padding-top: 20px; }
+/* En Registrar hay más opciones que pantalla: el botón de guardar se queda a la vista. */
+.pie-fijo {
+  position: sticky; bottom: 0; z-index: 1;
+  margin: auto -24px calc(-1 * (env(safe-area-inset-bottom) + 20px));
+  padding: 26px 24px calc(env(safe-area-inset-bottom) + 20px);
+  background: linear-gradient(to bottom, transparent, var(--fondo) 18px);
+}
+.pie-fijo .aviso { margin-bottom: 10px; min-height: 0; }
 
 /* ---------- inicio ---------- */
 
@@ -137,7 +145,11 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--mar); outli
 }
 .chip[aria-pressed="true"] { background: var(--mar-hondo); border-color: var(--mar); color: #eef3f5; }
 
-.nota { width: 100%; margin-top: 10px; background: var(--capa); border: 1px solid var(--linea); border-radius: 12px; padding: 11px 14px; font-size: 16px; }
+.chips-mini { margin-top: 8px; }
+.chips-mini:empty { display: none; }
+.chip-mini { font-size: 13px; min-height: 34px; padding: 5px 12px; color: var(--suave); }
+
+.nota { width: 100%; margin-top: 0; background: var(--capa); border: 1px solid var(--linea); border-radius: 12px; padding: 11px 14px; font-size: 16px; }
 .nota::placeholder { color: var(--suave); }
 
 .aviso { font-size: 14px; line-height: 1.45; color: var(--suave); min-height: 2.9em; margin-bottom: 14px; }

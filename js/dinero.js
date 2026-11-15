@@ -1,6 +1,7 @@
 // Dinero siempre en centavos enteros.
 
-const FORMATO = /^\d{1,6}([.,]\d{1,2})?$/;
+// Vale "12", "12,5", "0,5", ",50" y "12," (a medio escribir).
+const FORMATO = /^(\d{1,6}([.,]\d{0,2})?|[.,]\d{1,2})$/;
 
 /** Convierte lo que escribe la persona a centavos. Devuelve null si no vale. */
 export function aCentavos(texto) {

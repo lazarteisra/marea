@@ -2,7 +2,7 @@
 // CACHE y ARCHIVOS los escribe herramientas/sellar.mjs; no editarlos a mano.
 // Solo guarda archivos de la app; los datos de la persona nunca pasan por aquí.
 
-const CACHE = 'marea-ae207d9414';
+const CACHE = 'marea-3791f43047';
 const ARCHIVOS = [
   "./",
   "css/marea.css",

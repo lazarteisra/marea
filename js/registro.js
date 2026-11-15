@@ -39,3 +39,19 @@ export function crearGuardador(fn, alFallar) {
     }
   };
 }
+
+/**
+ * Lo que más ha escrito en "¿Qué fue?" para una categoría ("baño", "pollo"),
+ * para repetirlo con un toque. Sin categoría elegida, de todos los gastos.
+ */
+export function detallesRecientes(movimientos, categoria, max = 5) {
+  const vistos = new Map();
+  for (const m of movimientos) {
+    const texto = (m.nota ?? '').trim();
+    if (m.tipo !== 'gasto' || !texto || (categoria && m.categoria !== categoria)) continue;
+    const clave = texto.toLowerCase();
+    const previo = vistos.get(clave);
+    vistos.set(clave, { texto, usos: (previo?.usos ?? 0) + 1, ultima: Math.max(previo?.ultima ?? 0, m.fecha ?? 0) });
+  }
+  return [...vistos.values()].sort((a, b) => b.usos - a.usos || b.ultima - a.ultima).slice(0, max).map((v) => v.texto);
+}
