@@ -10,6 +10,15 @@ export function cuentasPorDefecto() {
 export const CATEGORIAS = ['Comida', 'Pasaje', 'Gasolina', 'Moto', 'Parqueo', 'Megas', 'Salida', 'Motel/Hotel', 'Gimnasio', 'Proyectos', 'Otro'];
 const RENOMBRADAS = new Map([['Hotel', 'Motel/Hotel']]);
 
+const conNombre = (m) => typeof m.persona === 'string' && m.persona.trim() !== '';
+
+/** Movimientos que las pantallas saben mostrar; lo demás no se pinta ni se cuenta. */
+function movimientoEntendible(m) {
+  if (m.tipo === 'gasto' || m.tipo === 'ingreso') return true;
+  if (m.tipo === 'paso') return typeof m.cuentaDestinoId === 'string';
+  return (m.tipo === 'prestamo' || m.tipo === 'cobro') && conNombre(m);
+}
+
 /**
  * Pone al día datos guardados con una lista de categorías anterior:
  * renombra las que cambiaron (también en los movimientos) y añade las
@@ -26,7 +35,20 @@ export function ponerAlDia(datos) {
   return {
     ...datos,
     ajustes: { ...datos.ajustes, categorias, fijos: fijosValidos(datos.ajustes.fijos) },
-    movimientos: datos.movimientos.map((m) => (RENOMBRADAS.has(m.categoria) ? { ...m, categoria: nombre(m.categoria) } : m)),
+    movimientos: datos.movimientos.filter(movimientoEntendible).map((m) => {
+      let limpio = RENOMBRADAS.has(m.categoria) ? { ...m, categoria: nombre(m.categoria) } : m;
+      if (limpio.tipo === 'gasto' && (limpio.persona !== undefined || limpio.devuelven !== undefined || limpio.paraQuien === 'devuelven')) {
+        // "Me lo devuelven" solo vale completo: con nombre y un monto entre 1 y lo que costó.
+        const completo = limpio.paraQuien === 'devuelven' && conNombre(limpio)
+          && Number.isSafeInteger(limpio.devuelven) && limpio.devuelven >= 1 && limpio.devuelven <= limpio.monto;
+        if (!completo) {
+          limpio = { ...limpio, paraQuien: limpio.paraQuien === 'devuelven' ? 'mi' : limpio.paraQuien };
+          delete limpio.persona;
+          delete limpio.devuelven;
+        }
+      }
+      return limpio;
+    }),
   };
 }
 

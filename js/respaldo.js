@@ -38,6 +38,8 @@ function leerCuenta(c) {
   return { id: c.id, nombre: c.nombre, saldoInicial: c.saldoInicial, orden: c.orden, archivada: c.archivada };
 }
 
+const esPersona = (x) => esTexto(x, 1, 40) && x.trim() !== '';
+
 function leerMovimiento(m, idsCuentas) {
   if (!esObjeto(m) || !esTexto(m.id, 1, 60)) return null;
   if (!esEntero(m.monto, 1, MONTO_MAX) || !esEntero(m.fecha, FECHA_MIN, FECHA_MAX)) return null;
@@ -46,14 +48,27 @@ function leerMovimiento(m, idsCuentas) {
   if (!esTexto(nota)) return null;
   const comun = { id: m.id, tipo: m.tipo, monto: m.monto, cuentaId: m.cuentaId, fecha: m.fecha, nota };
   if (m.tipo === 'gasto') {
-    if (!esTexto(m.categoria, 1, 40) || !['mi', 'invite'].includes(m.paraQuien)) return null;
+    if (!esTexto(m.categoria, 1, 40) || !['mi', 'invite', 'devuelven'].includes(m.paraQuien)) return null;
     const gasto = { ...comun, categoria: m.categoria, paraQuien: m.paraQuien };
+    if (m.paraQuien === 'devuelven') {
+      // Te devuelven todo o una parte, nunca más de lo que costó.
+      if (!esPersona(m.persona) || !esEntero(m.devuelven, 1, m.monto)) return null;
+      gasto.persona = m.persona.trim();
+      gasto.devuelven = m.devuelven;
+    }
     if (m.fijoId === undefined || m.fijoId === null) return gasto;
     return esTexto(m.fijoId, 1, 60) ? { ...gasto, fijoId: m.fijoId } : null;
   }
   if (m.tipo === 'ingreso') {
     if (!esTexto(m.origen, 1, 40)) return null;
     return { ...comun, origen: m.origen };
+  }
+  if (m.tipo === 'paso') {
+    if (!idsCuentas.has(m.cuentaDestinoId) || m.cuentaDestinoId === m.cuentaId) return null;
+    return { ...comun, cuentaDestinoId: m.cuentaDestinoId };
+  }
+  if (m.tipo === 'prestamo' || m.tipo === 'cobro') {
+    return esPersona(m.persona) ? { ...comun, persona: m.persona.trim() } : null;
   }
   return null;
 }

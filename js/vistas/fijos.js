@@ -6,7 +6,7 @@ import { claveDia } from '../fechas.js';
 import { resumen } from '../calculo.js';
 import { textoToca } from '../fijos.js';
 import { crearGuardador } from '../registro.js';
-import { campoMonto, grupoChips, avisoDeshacer, tituloDia } from './piezas.js';
+import { campoMonto, grupoChips, avisoDeshacer, tituloDia, abrirMovimiento } from './piezas.js';
 
 const SUGERIDOS = ['Gimnasio', 'Suscripción', 'Internet', 'Parqueo'];
 const MAX_FIJOS = 30;
@@ -32,7 +32,7 @@ export function fijos(ctx) {
         el('span', { class: 'mov-que' }, el('b', {}, f.nombre),
           el('small', { class: !pago && faltan !== null && faltan < 0 ? 'tarde' : null }, detalle))),
       pago
-        ? el('button', { class: 'fijo-hecho', type: 'button', onclick: () => ctx.ir('registrar', { mov: pago, volver: 'fijos' }) }, 'Pagado')
+        ? el('button', { class: 'fijo-hecho', type: 'button', onclick: () => abrirMovimiento(ctx, pago, 'fijos') }, 'Pagado')
         : el('button', { class: 'chip', type: 'button', onclick: () => ctx.ir('pagarFijo', { fijo: f }) }, 'Pagar'));
   };
 

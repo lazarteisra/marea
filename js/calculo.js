@@ -1,14 +1,20 @@
 // Saldos, ciclo de mensualidad y monto por día. Todo en centavos.
 import { claveDia, diasEntre } from './fechas.js';
 import { estadoFijos, esPagoFijo } from './fijos.js';
+import { gastoPropio } from './deudas.js';
 
-/** Saldo de cada cuenta: saldo inicial − gastos + ingresos. */
+/**
+ * Saldo de cada cuenta. Entran ingresos y cobros; salen gastos y préstamos
+ * (el gasto sale entero, aunque parte te la devuelvan). Un paso sale de una
+ * cuenta y entra en otra.
+ */
 export function saldos(cuentas, movimientos) {
   const mapa = new Map(cuentas.map((c) => [c.id, c.saldoInicial]));
+  const mover = (id, cambio) => { if (mapa.has(id)) mapa.set(id, mapa.get(id) + cambio); };
   for (const m of movimientos) {
-    if (!mapa.has(m.cuentaId)) continue;
-    if (m.tipo === 'ingreso') mapa.set(m.cuentaId, mapa.get(m.cuentaId) + m.monto);
-    else if (m.tipo === 'gasto') mapa.set(m.cuentaId, mapa.get(m.cuentaId) - m.monto);
+    if (m.tipo === 'ingreso' || m.tipo === 'cobro') mover(m.cuentaId, m.monto);
+    else if (m.tipo === 'gasto' || m.tipo === 'prestamo') mover(m.cuentaId, -m.monto);
+    else if (m.tipo === 'paso') { mover(m.cuentaId, -m.monto); mover(m.cuentaDestinoId, m.monto); }
   }
   return mapa;
 }
@@ -72,7 +78,8 @@ export function resumen(cuentas, movimientos, ajustes, ahoraMs) {
   let gastadoHoy = 0;
   for (const m of movimientos) {
     if (m.tipo !== 'gasto' || claveDia(m.fecha) !== hoy) continue;
-    gastadoHoy += esPagoFijo(m, idsFijos) ? Math.max(0, m.monto - estimados.get(m.fijoId)) : m.monto;
+    // Lo que te van a devolver tampoco es gasto tuyo.
+    gastadoHoy += esPagoFijo(m, idsFijos) ? Math.max(0, gastoPropio(m) - estimados.get(m.fijoId)) : gastoPropio(m);
   }
 
   const proxima = proximaMensualidad(hoy, ultimaMensualidad(movimientos), ajustes.diaMensualidad, ajustes.inicio ?? null);
@@ -89,10 +96,16 @@ export function resumen(cuentas, movimientos, ajustes, ahoraMs) {
   };
 }
 
-/** Cómo queda el día si se guarda un gasto de `monto`. */
-export function avisoGasto(r, monto) {
+/**
+ * Cómo queda el día si se guarda un gasto de `monto`. Si parte te la
+ * devuelven, `propio` es lo que de verdad gastas tú; la plata igual sale entera.
+ */
+export function avisoGasto(r, monto, propio = monto) {
+  // La plata sale entera, así que el monto por día de hoy baja con lo que
+  // te van a devolver: se compara contra ese monto nuevo.
+  const porDiaHoy = Math.max(0, Math.floor((r.disponible - monto + r.gastadoHoy + propio) / r.dias));
   return {
-    excesoHoy: Math.max(0, r.gastadoHoy + monto - r.porDia),
+    excesoHoy: Math.max(0, r.gastadoHoy + propio - porDiaHoy),
     porDiaManana: Math.max(0, Math.floor((r.disponible - monto) / Math.max(1, r.dias - 1))),
   };
 }
@@ -125,7 +138,7 @@ export function resumenCiclo(cuentas, movimientos, ajustes, ahoraMs) {
   let sueltos = 0;
   for (const m of movimientos) {
     if (claveDia(m.fecha) < r.inicioCiclo) continue;
-    if (m.tipo === 'gasto' && !esPagoFijo(m, idsFijos)) gastado += m.monto;
+    if (m.tipo === 'gasto' && !esPagoFijo(m, idsFijos)) gastado += gastoPropio(m);
     else if (m.tipo === 'ingreso' && m.origen === 'Mensualidad') mensualidad += m.monto;
     else if (m.tipo === 'ingreso') sueltos += m.monto;
   }
@@ -156,7 +169,7 @@ export function gastoPorCiclo(movimientos, ajustes, ahoraMs) {
       // Los pagos fijos no cuentan: ya estaban apartados y no son gasto del día a día.
       if (m.tipo !== 'gasto' || esPagoFijo(m, idsFijos)) continue;
       const i = diasEntre(desde, claveDia(m.fecha));
-      if (i >= 0 && i < dias) porDia[i] += m.monto;
+      if (i >= 0 && i < dias) porDia[i] += gastoPropio(m);
     }
     let suma = 0;
     return porDia.map((v) => (suma += v));

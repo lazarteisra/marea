@@ -3,7 +3,7 @@ import { el } from '../dom.js';
 import { aTexto } from '../dinero.js';
 import { claveDia } from '../fechas.js';
 import { filtrar, agruparPorDia } from '../movimientos.js';
-import { avisoDeshacer, filaMovimiento, tituloDia } from './piezas.js';
+import { avisoDeshacer, filaMovimiento, tituloDia, abrirMovimiento } from './piezas.js';
 
 const TIPOS = [{ valor: 'todo', texto: 'Todo' }, { valor: 'gasto', texto: 'Gastos' }, { valor: 'ingreso', texto: 'Ingresos' }];
 const TANDA = 120;
@@ -16,7 +16,7 @@ export function movimientos(ctx) {
   let visibles = TANDA;
 
   const lista = el('div', { class: 'lista-movs', 'aria-live': 'polite' });
-  const abrir = (m) => () => ctx.ir(m.tipo === 'gasto' ? 'registrar' : 'ingreso', { mov: m, volver: 'movimientos' });
+  const abrir = (m) => () => abrirMovimiento(ctx, m, 'movimientos');
 
   function pintar() {
     const encontrados = filtrar(todos, cuentas, filtro).sort((a, b) => b.fecha - a.fecha);
@@ -38,7 +38,7 @@ export function movimientos(ctx) {
   }
 
   const buscar = el('input', {
-    class: 'nota', type: 'search', maxlength: 60, placeholder: 'Buscar: baño, comida, BNB…', 'aria-label': 'Buscar movimientos',
+    class: 'nota', type: 'search', maxlength: 60, placeholder: 'Buscar: baño, comida, BNB, un nombre…', 'aria-label': 'Buscar movimientos',
     autocomplete: 'off', enterkeyhint: 'search', value: filtro.texto || null,
     oninput: () => { filtro.texto = buscar.value; visibles = TANDA; pintar(); },
   });

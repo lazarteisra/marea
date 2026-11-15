@@ -64,13 +64,38 @@ export function fechaHora(ms, ahoraMs) {
 
 /** Una línea de la lista de movimientos; al tocarla se abre para editar. */
 export function filaMovimiento(m, cuentas, alTocar) {
-  const cuenta = cuentas.find((c) => c.id === m.cuentaId)?.nombre;
-  const esGasto = m.tipo === 'gasto';
-  const titulo = esGasto ? (m.nota || m.categoria) : m.origen;
-  const detalle = [esGasto && m.nota ? m.categoria : null, esGasto && m.paraQuien === 'invite' ? 'invité yo' : null, cuenta, horaDe(m.fecha)].filter(Boolean).join(' · ');
+  const nombre = (id) => cuentas.find((c) => c.id === id)?.nombre;
+  const cuenta = nombre(m.cuentaId);
+  const hora = horaDe(m.fecha);
+  let titulo;
+  let partes;
+  let signo = '';
+  let clase = '';
+  if (m.tipo === 'gasto') {
+    titulo = m.nota || m.categoria;
+    partes = [m.nota ? m.categoria : null, m.paraQuien === 'invite' ? 'invité yo' : null,
+      m.paraQuien === 'devuelven' ? `${m.persona} te devuelve ${aTexto(m.devuelven)}` : null, cuenta, hora];
+  } else if (m.tipo === 'ingreso') {
+    titulo = m.origen; partes = [cuenta, hora]; signo = '+'; clase = ' entra';
+  } else if (m.tipo === 'paso') {
+    titulo = `${cuenta ?? '?'} → ${nombre(m.cuentaDestinoId) ?? '?'}`; partes = ['Paso entre cuentas', hora]; clase = ' neutro';
+  } else if (m.tipo === 'prestamo') {
+    titulo = `Le prestaste a ${m.persona}`; partes = [cuenta, hora];
+  } else if (m.tipo === 'cobro') {
+    titulo = `${m.persona} te pagó`; partes = [cuenta, hora]; signo = '+'; clase = ' entra';
+  } else {
+    titulo = 'Movimiento'; partes = [cuenta, hora]; clase = ' neutro';
+  }
   return el('button', { class: 'mov', type: 'button', onclick: alTocar },
-    el('span', { class: 'mov-que' }, el('b', {}, titulo), el('small', {}, detalle)),
-    el('span', { class: 'mov-monto' + (esGasto ? '' : ' entra') }, (esGasto ? '' : '+') + aTexto(m.monto)));
+    el('span', { class: 'mov-que' }, el('b', {}, titulo), el('small', {}, partes.filter(Boolean).join(' · '))),
+    el('span', { class: 'mov-monto' + clase }, signo + aTexto(m.monto)));
+}
+
+const VISTA_DE = { gasto: 'registrar', ingreso: 'ingreso', paso: 'paso', prestamo: 'prestamo', cobro: 'cobro' };
+
+/** Abre un movimiento ya guardado en la pantalla que sabe cambiarlo. */
+export function abrirMovimiento(ctx, m, volver) {
+  ctx.ir(VISTA_DE[m.tipo] ?? 'registrar', { mov: m, volver });
 }
 
 /** Aviso con "Deshacer" tras guardar, cambiar o borrar. Devuelve null si no hay nada que avisar. */
