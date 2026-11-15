@@ -111,6 +111,7 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--mar); outli
 .bloque-cab { display: flex; justify-content: space-between; align-items: baseline; }
 .bloque-titulo { font-size: 13px; font-weight: 500; color: var(--suave); letter-spacing: .06em; text-transform: uppercase; }
 .bloque .cuentas { margin-top: 10px; }
+.cuentas-inicio { margin-top: 28px; }
 .ciclo-gastado { font-family: var(--serif); font-size: 27px; line-height: 1.15; margin-top: 10px; }
 .ciclo-compara { font-size: 14px; color: var(--suave); margin-top: 4px; }
 .ciclo-compara.pasa { color: var(--rojo); }

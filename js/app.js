@@ -7,7 +7,8 @@ import { registrar } from './vistas/registrar.js';
 import { ingreso } from './vistas/ingreso.js';
 import { ajustes } from './vistas/ajustes.js';
 import { movimientos } from './vistas/movimientos.js';
-import { presupuesto, fijos, total } from './vistas/proximamente.js';
+import { presupuesto } from './vistas/presupuesto.js';
+import { fijos, total } from './vistas/proximamente.js';
 import { barraPestanas, VISTAS_CON_BARRA } from './vistas/piezas.js';
 
 const vistas = { primeraVez, inicio, registrar, ingreso, ajustes, movimientos, presupuesto, fijos, total };
