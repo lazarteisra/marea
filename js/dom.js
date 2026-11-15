@@ -15,3 +15,14 @@ export function el(etiqueta, atributos = {}, ...hijos) {
   }
   return nodo;
 }
+
+/** Igual que `el`, para dibujos SVG (iconos y gráficos). */
+export function svg(etiqueta, atributos = {}, ...hijos) {
+  const nodo = document.createElementNS('http://www.w3.org/2000/svg', etiqueta);
+  for (const [clave, valor] of Object.entries(atributos ?? {})) {
+    if (valor === null || valor === undefined || valor === false) continue;
+    nodo.setAttribute(clave, String(valor));
+  }
+  for (const hijo of hijos.flat()) if (hijo) nodo.append(hijo);
+  return nodo;
+}

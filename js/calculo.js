@@ -76,3 +76,40 @@ export function avisoGasto(r, monto) {
     porDiaManana: Math.max(0, Math.floor((r.disponible - monto) / Math.max(1, r.dias - 1))),
   };
 }
+
+/**
+ * Gasto acumulado día por día del ciclo actual y del anterior, para
+ * compararlos. Un ciclo empieza con cada mensualidad; el primero, el día
+ * en que empezó a usar la app. `actual[i]` es lo gastado hasta el día i.
+ */
+export function gastoPorCiclo(movimientos, ajustes, ahoraMs) {
+  const hoy = claveDia(ahoraMs);
+  const cortes = new Set();
+  if (ajustes.inicio) cortes.add(ajustes.inicio);
+  for (const m of movimientos) if (m.tipo === 'ingreso' && m.origen === 'Mensualidad') cortes.add(claveDia(m.fecha));
+  const orden = [...cortes].filter((c) => c <= hoy).sort();
+  if (!orden.length) {
+    const primero = movimientos.reduce((min, m) => (claveDia(m.fecha) < min ? claveDia(m.fecha) : min), hoy);
+    orden.push(primero);
+  }
+  const inicio = orden.at(-1);
+  const inicioAnterior = orden.at(-2) ?? null;
+
+  const acumular = (desde, dias) => {
+    const porDia = new Array(Math.max(1, dias)).fill(0);
+    for (const m of movimientos) {
+      if (m.tipo !== 'gasto') continue;
+      const i = diasEntre(desde, claveDia(m.fecha));
+      if (i >= 0 && i < dias) porDia[i] += m.monto;
+    }
+    let suma = 0;
+    return porDia.map((v) => (suma += v));
+  };
+
+  const actual = acumular(inicio, diasEntre(inicio, hoy) + 1);
+  const anterior = inicioAnterior ? acumular(inicioAnterior, diasEntre(inicioAnterior, inicio)) : null;
+  return {
+    inicio, actual, total: actual.at(-1), anterior,
+    anteriorMismoDia: anterior ? anterior[Math.min(actual.length, anterior.length) - 1] : null,
+  };
+}

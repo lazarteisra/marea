@@ -19,6 +19,18 @@ const esEntero = (x, min, max) => Number.isSafeInteger(x) && x >= min && x <= ma
 const esLista = (x, max) => Array.isArray(x) && x.length <= max;
 const listaDeTextos = (x) => esLista(x, 50) && x.length > 0 && x.every((t) => esTexto(t, 1, 40));
 
+// Del año 2000 al 9999: fuera de eso las cuentas de días dejan de tener sentido.
+const FECHA_MIN = Date.UTC(2000, 0, 1);
+const FECHA_MAX = Date.UTC(9999, 11, 31);
+
+/** "2026-11-14" que además sea un día que existe. */
+function esDia(texto) {
+  if (typeof texto !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(texto)) return false;
+  const [a, m, d] = texto.split('-').map(Number);
+  const f = new Date(Date.UTC(a, m - 1, d));
+  return a >= 2000 && f.getUTCFullYear() === a && f.getUTCMonth() === m - 1 && f.getUTCDate() === d;
+}
+
 function leerCuenta(c) {
   if (!esObjeto(c) || !esTexto(c.id, 1, 60) || !esTexto(c.nombre, 1, 40)) return null;
   if (!esEntero(c.saldoInicial, -SALDO_MAX, SALDO_MAX) || !esEntero(c.orden, 0, 1000)) return null;
@@ -28,7 +40,7 @@ function leerCuenta(c) {
 
 function leerMovimiento(m, idsCuentas) {
   if (!esObjeto(m) || !esTexto(m.id, 1, 60)) return null;
-  if (!esEntero(m.monto, 1, MONTO_MAX) || !esEntero(m.fecha, 0, 8640000000000000)) return null;
+  if (!esEntero(m.monto, 1, MONTO_MAX) || !esEntero(m.fecha, FECHA_MIN, FECHA_MAX)) return null;
   if (!idsCuentas.has(m.cuentaId)) return null;
   const nota = m.nota === undefined ? '' : m.nota;
   if (!esTexto(nota)) return null;
@@ -49,7 +61,7 @@ function leerAjustes(a, idsCuentas) {
   if (!listaDeTextos(a.categorias) || !listaDeTextos(a.origenes)) return null;
   if (typeof a.configurada !== 'boolean') return null;
   const inicio = a.inicio ?? null;
-  if (inicio !== null && !(typeof inicio === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(inicio))) return null;
+  if (inicio !== null && !esDia(inicio)) return null;
   const ultima = a.ultimaCuentaId ?? null;
   if (ultima !== null && !idsCuentas.has(ultima)) return null;
   return {

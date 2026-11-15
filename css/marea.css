@@ -81,6 +81,75 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--mar); outli
 }
 .pie-fijo .aviso { margin-bottom: 10px; min-height: 0; }
 
+/* ---------- pestañas ---------- */
+
+.pestanas {
+  position: fixed; left: 50%; bottom: 0; z-index: 2;
+  width: 100%; max-width: 430px; transform: translateX(-50%);
+  display: grid; grid-template-columns: repeat(5, 1fr);
+  padding: 0 6px env(safe-area-inset-bottom);
+  background: var(--fondo); border-top: 1px solid var(--linea);
+}
+.pestanas button {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+  height: 58px; min-width: 0; padding: 0; background: none; border: 0;
+  color: var(--suave); font-size: 10.5px; letter-spacing: .01em;
+}
+.pestanas svg { width: 21px; height: 21px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+.pestanas button[aria-current="page"] { color: var(--mar); }
+.con-barra .pantalla { padding-bottom: calc(env(safe-area-inset-bottom) + 58px + 20px); }
+/* Los botones de registrar quedan a la vista, encima de las pestañas. */
+.pie-pestana {
+  position: sticky; bottom: calc(env(safe-area-inset-bottom) + 58px); z-index: 1;
+  margin: auto -24px -20px; padding: 26px 24px 14px;
+  background: linear-gradient(to bottom, transparent, var(--fondo) 18px);
+}
+
+/* ---------- bloques del tablero y movimientos ---------- */
+
+.bloque { margin-top: 34px; }
+.bloque-cab { display: flex; justify-content: space-between; align-items: baseline; }
+.bloque-titulo { font-size: 13px; font-weight: 500; color: var(--suave); letter-spacing: .06em; text-transform: uppercase; }
+.bloque .cuentas { margin-top: 10px; }
+.ciclo-gastado { font-family: var(--serif); font-size: 27px; line-height: 1.15; margin-top: 10px; }
+.ciclo-compara { font-size: 14px; color: var(--suave); margin-top: 4px; }
+.ciclo-compara.pasa { color: var(--rojo); }
+
+.grafico { display: block; width: 100%; height: 96px; margin-top: 16px; overflow: visible; }
+.grafico polyline { fill: none; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+.g-base { stroke: var(--linea); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.g-ahora { stroke: var(--mar); stroke-width: 2; }
+.g-antes { stroke: var(--suave); stroke-width: 1.25; stroke-dasharray: 3 4; opacity: .7; }
+.g-punto { fill: var(--mar); }
+.leyenda { display: flex; gap: 18px; font-size: 12px; color: var(--suave); margin-top: 8px; }
+.leyenda span::before { content: ""; display: inline-block; width: 14px; margin-right: 6px; vertical-align: middle; border-top: 2px solid var(--mar); }
+.leyenda .l-antes::before { border-top: 1px dashed var(--suave); }
+
+.movs { margin-top: 8px; border-bottom: 1px solid var(--linea); }
+.mov {
+  display: flex; justify-content: space-between; align-items: center; gap: 14px;
+  width: 100%; min-height: 58px; padding: 9px 0; text-align: left;
+  background: none; border: 0; border-top: 1px solid var(--linea);
+}
+.mov:active { background: var(--capa); }
+.mov-que { display: flex; flex-direction: column; min-width: 0; }
+.mov-que b { font-weight: 500; font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mov-que small { font-size: 12.5px; color: var(--suave); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mov-monto { font-size: 16px; font-weight: 500; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.mov-monto.entra { color: var(--mar); }
+.vacio { color: var(--suave); font-size: 14px; margin-top: 12px; max-width: 34ch; }
+
+.buscador { margin-top: 18px; }
+.buscador .chips { margin-top: 10px; }
+.buscador input { -webkit-appearance: none; appearance: none; }
+.dia { margin-top: 24px; }
+.dia-cab { display: flex; justify-content: space-between; font-size: 13px; font-weight: 500; color: var(--suave); font-variant-numeric: tabular-nums; }
+.lista-movs .toast { margin-top: 14px; }
+.ver-mas { width: 100%; margin-top: 20px; }
+.pronto { margin-top: 22px; }
+.borrar { margin-top: 26px; }
+.enlace.peligro { color: var(--rojo); }
+
 /* ---------- inicio ---------- */
 
 .frase { color: var(--suave); margin-top: 30px; }
@@ -106,7 +175,7 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--mar); outli
 .hoy p { display: flex; justify-content: space-between; font-size: 13px; color: var(--suave); margin-top: 11px; }
 .pasa { color: var(--rojo); font-weight: 500; }
 
-.cuentas { margin-top: 28px; border-bottom: 1px solid var(--linea); }
+.cuentas { border-bottom: 1px solid var(--linea); }
 .cta { display: flex; justify-content: space-between; align-items: baseline; padding: 11px 0; border-top: 1px solid var(--linea); }
 .cta b { font-weight: 500; font-size: 17px; font-variant-numeric: tabular-nums; }
 
@@ -185,3 +254,7 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--mar); outli
 
 /* Si el último botón queda solo en su fila, ocupa todo el ancho. */
 .acciones > :last-child:nth-child(even) { grid-column: 1 / 3; }
+
+/* En el tablero los dos botones van en una fila para dejar ver más contenido. */
+.pie-pestana .acciones { grid-template-columns: 1.35fr 1fr; }
+.pie-pestana .acciones > .boton { grid-column: auto; min-height: 52px; }

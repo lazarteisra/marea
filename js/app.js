@@ -6,8 +6,11 @@ import { inicio } from './vistas/inicio.js';
 import { registrar } from './vistas/registrar.js';
 import { ingreso } from './vistas/ingreso.js';
 import { ajustes } from './vistas/ajustes.js';
+import { movimientos } from './vistas/movimientos.js';
+import { presupuesto, fijos, total } from './vistas/proximamente.js';
+import { barraPestanas, VISTAS_CON_BARRA } from './vistas/piezas.js';
 
-const vistas = { primeraVez, inicio, registrar, ingreso, ajustes };
+const vistas = { primeraVez, inicio, registrar, ingreso, ajustes, movimientos, presupuesto, fijos, total };
 const raiz = document.getElementById('app');
 let actual = null;
 
@@ -22,7 +25,21 @@ const ctx = {
 
 function ir(nombre, parametros = {}) {
   actual = nombre;
-  raiz.replaceChildren(vistas[nombre](ctx, parametros));
+  const conBarra = VISTAS_CON_BARRA.includes(nombre);
+  let vista;
+  try {
+    vista = vistas[nombre](ctx, parametros);
+  } catch {
+    // Datos que una pantalla no sabe pintar: siempre queda el camino a Ajustes
+    // para exportar, importar otro respaldo o empezar de cero.
+    vista = el('section', { class: 'pantalla' },
+      el('h1', { class: 'titulo chico' }, 'Algo no cuadra'),
+      el('p', { class: 'parrafo' }, 'Marea no pudo mostrar esta pantalla con los datos guardados. Tus datos siguen en el teléfono.'),
+      nombre === 'ajustes' ? null : el('div', { class: 'seccion' },
+        el('button', { class: 'boton boton-sec', type: 'button', onclick: () => ir('ajustes') }, 'Ir a Ajustes')));
+  }
+  document.body.classList.toggle('con-barra', conBarra);
+  raiz.replaceChildren(...[vista, conBarra ? barraPestanas(ctx, nombre) : null].filter(Boolean));
   window.scrollTo(0, 0);
   // Dentro del mismo toque, para que el iPhone abra el teclado.
   raiz.querySelector('[data-foco]')?.focus();

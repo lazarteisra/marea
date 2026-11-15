@@ -7,7 +7,7 @@ export function cuentasPorDefecto() {
 }
 
 export const CATEGORIAS = ['Comida', 'Pasaje', 'Gasolina', 'Moto', 'Parqueo', 'Megas', 'Salida', 'Motel/Hotel', 'Gimnasio', 'Proyectos', 'Otro'];
-const RENOMBRADAS = { Hotel: 'Motel/Hotel' };
+const RENOMBRADAS = new Map([['Hotel', 'Motel/Hotel']]);
 
 /**
  * Pone al día datos guardados con una lista de categorías anterior:
@@ -15,7 +15,7 @@ const RENOMBRADAS = { Hotel: 'Motel/Hotel' };
  * nuevas antes de "Otro". Aplicarla dos veces no cambia nada.
  */
 export function ponerAlDia(datos) {
-  const nombre = (c) => RENOMBRADAS[c] ?? c;
+  const nombre = (c) => RENOMBRADAS.get(c) ?? c;
   const categorias = [...new Set(datos.ajustes.categorias.map(nombre))];
   for (const c of CATEGORIAS) {
     if (categorias.includes(c)) continue;
@@ -25,7 +25,7 @@ export function ponerAlDia(datos) {
   return {
     ...datos,
     ajustes: { ...datos.ajustes, categorias },
-    movimientos: datos.movimientos.map((m) => (m.categoria in RENOMBRADAS ? { ...m, categoria: nombre(m.categoria) } : m)),
+    movimientos: datos.movimientos.map((m) => (RENOMBRADAS.has(m.categoria) ? { ...m, categoria: nombre(m.categoria) } : m)),
   };
 }
 
