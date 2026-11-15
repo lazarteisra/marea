@@ -12,6 +12,7 @@ export function textosInicio(r) {
   if (sinPlata) resto = 'No te queda para gastar este ciclo';
   else if (r.esperando) resto = 'Esperando tu mensualidad';
   else resto = `Te quedan ${aBsEnteros(r.disponible)} Bs para ${r.dias} ${r.dias === 1 ? 'día' : 'días'}`;
+  if (!sinPlata && r.apartado > 0) resto += `, sin contar ${aBsEnteros(r.apartado)} de tus fijos`;
   const pasado = r.excesoHoy > 0;
   return {
     numero: sinPlata ? '0' : aBsEnteros(r.porDia),

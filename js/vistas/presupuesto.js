@@ -1,7 +1,7 @@
-// Presupuesto: por ahora, cómo va el gasto del ciclo. Lo demás llega en el módulo siguiente.
+// Presupuesto: cuánto queda para gastar en el ciclo, pagos fijos, ingresos y la línea del gasto.
 import { el, svg } from '../dom.js';
-import { resumen, gastoPorCiclo } from '../calculo.js';
-import { aTexto } from '../dinero.js';
+import { resumenCiclo, gastoPorCiclo } from '../calculo.js';
+import { aTexto, aBsEnteros } from '../dinero.js';
 
 /** Textos de la tarjeta "Este ciclo". Pura, para poder probarla. */
 export function textosCiclo(g) {
@@ -39,19 +39,58 @@ function graficoCiclo(g, diasDelCiclo) {
     svg('circle', { class: 'g-punto', cx: fx, cy: fy, r: 3.5 }));
 }
 
+/** Textos de Presupuesto a partir de `resumenCiclo`. Pura, para poder probarla. */
+export function textosPresupuesto(c) {
+  const dias = `${c.dias} ${c.dias === 1 ? 'día' : 'días'}`;
+  let ritmo;
+  if (c.queda <= 0) ritmo = 'No te queda para gastar este ciclo';
+  else if (c.esperando) ritmo = 'Esperando tu mensualidad';
+  else ritmo = `${aBsEnteros(c.porDia)} Bs por día para ${dias}`;
+  const hayFijos = c.fijosPorPagar > 0 || c.fijosPagado > 0;
+  return {
+    queda: aBsEnteros(c.queda),
+    ritmo,
+    gastado: `Gastaste ${aTexto(c.gastado)}`,
+    de: `de ${aBsEnteros(c.presupuesto)}`,
+    avance: c.presupuesto > 0 ? Math.min(100, Math.round((c.gastado / c.presupuesto) * 100)) : (c.gastado > 0 ? 100 : 0),
+    fijos: !hayFijos ? 'Ninguno' : c.fijosPorPagar > 0 ? `${aBsEnteros(c.fijosPorPagar)} por pagar` : 'Todo pagado',
+    fijosDetalle: !hayFijos ? 'Agrega el gimnasio o tus suscripciones' : `${aTexto(c.fijosPagado)} pagado`,
+    entrado: `${aTexto(c.entrado)} entró`,
+    entradoDetalle: c.entrado === 0 ? 'Nada todavía en este ciclo'
+      : [c.mensualidad ? `Mensualidad ${aTexto(c.mensualidad)}` : null, c.sueltos ? `sueltos ${aTexto(c.sueltos)}` : null].filter(Boolean).join(' · '),
+  };
+}
+
 export function presupuesto(ctx) {
   const { cuentas, movimientos, ajustes } = ctx.estado;
-  const r = resumen(cuentas, movimientos, ajustes, ctx.ahora());
+  const c = resumenCiclo(cuentas, movimientos, ajustes, ctx.ahora());
+  const t = textosPresupuesto(c);
   const g = gastoPorCiclo(movimientos, ajustes, ctx.ahora());
-  const c = textosCiclo(g);
+  const tc = textosCiclo(g);
+
+  const avance = el('i');
+  avance.style.width = t.avance + '%';
 
   return el('section', { class: 'pantalla' },
     el('h1', { class: 'titulo chico' }, 'Presupuesto'),
+
+    el('p', { class: 'frase' }, 'Te queda para gastar'),
+    el('p', { class: 'num medio' }, t.queda, el('span', { class: 'bs' }, 'Bs')),
+    el('p', { class: 'resto' }, t.ritmo),
+    el('div', { class: 'hoy' },
+      el('div', { class: 'pista' }, avance),
+      el('p', {}, el('span', {}, t.gastado), el('span', {}, t.de))),
+
+    el('div', { class: 'tarjetas' },
+      el('button', { class: 'tarjeta', type: 'button', onclick: () => ctx.ir('fijos') },
+        el('small', {}, 'Pagos fijos'), el('b', {}, t.fijos), el('span', {}, t.fijosDetalle)),
+      el('div', { class: 'tarjeta' },
+        el('small', {}, 'Ingresos'), el('b', {}, t.entrado), el('span', {}, t.entradoDetalle))),
+
     el('section', { class: 'bloque' },
       el('h2', { class: 'bloque-titulo' }, 'Este ciclo'),
-      el('p', { class: 'ciclo-gastado' }, c.gastado),
-      el('p', { class: 'ciclo-compara' + (c.mas ? ' pasa' : '') }, c.compara),
-      graficoCiclo(g, g.actual.length - 1 + r.dias),
-      g.anterior ? el('p', { class: 'leyenda' }, el('span', { class: 'l-ahora' }, 'Este ciclo'), el('span', { class: 'l-antes' }, 'El anterior')) : null),
-    el('p', { class: 'parrafo pronto' }, 'Aquí también van a estar cuánto te queda para gastar, tus pagos fijos y lo que te entró. Llega en el próximo módulo.'));
+      el('p', { class: 'ciclo-gastado' }, tc.gastado),
+      el('p', { class: 'ciclo-compara' + (tc.mas ? ' pasa' : '') }, tc.compara),
+      graficoCiclo(g, g.actual.length - 1 + c.dias),
+      g.anterior ? el('p', { class: 'leyenda' }, el('span', { class: 'l-ahora' }, 'Este ciclo'), el('span', { class: 'l-antes' }, 'El anterior')) : null));
 }

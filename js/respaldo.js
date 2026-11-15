@@ -47,13 +47,23 @@ function leerMovimiento(m, idsCuentas) {
   const comun = { id: m.id, tipo: m.tipo, monto: m.monto, cuentaId: m.cuentaId, fecha: m.fecha, nota };
   if (m.tipo === 'gasto') {
     if (!esTexto(m.categoria, 1, 40) || !['mi', 'invite'].includes(m.paraQuien)) return null;
-    return { ...comun, categoria: m.categoria, paraQuien: m.paraQuien };
+    const gasto = { ...comun, categoria: m.categoria, paraQuien: m.paraQuien };
+    if (m.fijoId === undefined || m.fijoId === null) return gasto;
+    return esTexto(m.fijoId, 1, 60) ? { ...gasto, fijoId: m.fijoId } : null;
   }
   if (m.tipo === 'ingreso') {
     if (!esTexto(m.origen, 1, 40)) return null;
     return { ...comun, origen: m.origen };
   }
   return null;
+}
+
+function leerFijo(f) {
+  if (!esObjeto(f) || !esTexto(f.id, 1, 60) || !esTexto(f.nombre, 1, 40)) return null;
+  if (!esEntero(f.estimado, 1, MONTO_MAX)) return null;
+  const dia = f.dia ?? null;
+  if (dia !== null && !esEntero(dia, 1, 28)) return null;
+  return { id: f.id, nombre: f.nombre, estimado: f.estimado, dia };
 }
 
 function leerAjustes(a, idsCuentas) {
@@ -64,9 +74,14 @@ function leerAjustes(a, idsCuentas) {
   if (inicio !== null && !esDia(inicio)) return null;
   const ultima = a.ultimaCuentaId ?? null;
   if (ultima !== null && !idsCuentas.has(ultima)) return null;
+  // Los respaldos anteriores a los pagos fijos no traen la lista.
+  const crudos = a.fijos ?? [];
+  if (!esLista(crudos, 30)) return null;
+  const fijos = crudos.map(leerFijo);
+  if (fijos.includes(null) || new Set(fijos.map((f) => f.id)).size !== fijos.length) return null;
   return {
     diaMensualidad: a.diaMensualidad, categorias: [...a.categorias], origenes: [...a.origenes],
-    ultimaCuentaId: ultima, inicio, configurada: a.configurada,
+    ultimaCuentaId: ultima, inicio, configurada: a.configurada, fijos,
   };
 }
 

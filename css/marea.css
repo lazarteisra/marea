@@ -145,11 +145,33 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--mar); outli
 .buscador input { -webkit-appearance: none; appearance: none; }
 .dia { margin-top: 24px; }
 .dia-cab { display: flex; justify-content: space-between; font-size: 13px; font-weight: 500; color: var(--suave); font-variant-numeric: tabular-nums; }
-.lista-movs .toast { margin-top: 14px; }
+.lista-movs .toast, .pantalla > .toast { margin-top: 14px; }
 .ver-mas { width: 100%; margin-top: 20px; }
 .pronto { margin-top: 22px; }
 .borrar { margin-top: 26px; }
 .enlace.peligro { color: var(--rojo); }
+
+.num.medio { font-size: clamp(72px, 24vw, 104px); }
+.tarjetas { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 28px; }
+.tarjeta {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 4px; min-width: 0; text-align: left;
+  background: var(--capa); border: 1px solid var(--linea); border-radius: 14px; padding: 14px;
+}
+button.tarjeta:active { border-color: var(--mar); }
+.tarjeta small { font-size: 12.5px; color: var(--suave); }
+.tarjeta b { font-size: 17px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.tarjeta span { font-size: 12.5px; color: var(--suave); line-height: 1.35; }
+
+.fijos { margin-top: 22px; border-bottom: 1px solid var(--linea); }
+.fijo { display: flex; align-items: center; gap: 12px; border-top: 1px solid var(--linea); min-height: 64px; }
+.fijo .mov { border-top: 0; flex: 1; min-width: 0; }
+.fijo .chip { flex: none; }
+.fijo.pagado .mov-que b { color: var(--suave); }
+.fijo-hecho { flex: none; font-size: 13px; color: var(--mar); background: none; border: 0; padding: 10px 0; }
+.tarde { color: var(--rojo); }
+.agregar { width: 100%; margin-top: 22px; }
+.campo-suelto { margin-top: 0; }
+.campo-dia { width: 6ch; text-align: center; }
 
 /* ---------- inicio ---------- */
 

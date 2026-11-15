@@ -52,7 +52,7 @@ export function registrar(ctx, { mov = null, volver = 'inicio' } = {}) {
       categoria: enQue.valor(), paraQuien: paraQuien.valor(), nota: nota.value.trim().slice(0, 200),
     };
     await ctx.almacen.agregarMovimiento(nuevo);
-    if (!mov && ajustes.ultimaCuentaId !== nuevo.cuentaId) await ctx.almacen.guardarAjustes({ ...ajustes, ultimaCuentaId: nuevo.cuentaId });
+    if (!mov && ajustes.ultimaCuentaId !== nuevo.cuentaId) await ctx.almacen.actualizarAjustes((a) => ({ ...a, ultimaCuentaId: nuevo.cuentaId }));
     await ctx.recargar();
     ctx.deshacer = mov
       ? { texto: 'Cambios guardados.', accion: () => ctx.almacen.agregarMovimiento(mov) }

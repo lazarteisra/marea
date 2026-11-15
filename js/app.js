@@ -8,10 +8,11 @@ import { ingreso } from './vistas/ingreso.js';
 import { ajustes } from './vistas/ajustes.js';
 import { movimientos } from './vistas/movimientos.js';
 import { presupuesto } from './vistas/presupuesto.js';
-import { fijos, total } from './vistas/proximamente.js';
+import { fijos, fijo, pagarFijo } from './vistas/fijos.js';
+import { total } from './vistas/proximamente.js';
 import { barraPestanas, VISTAS_CON_BARRA } from './vistas/piezas.js';
 
-const vistas = { primeraVez, inicio, registrar, ingreso, ajustes, movimientos, presupuesto, fijos, total };
+const vistas = { primeraVez, inicio, registrar, ingreso, ajustes, movimientos, presupuesto, fijos, fijo, pagarFijo, total };
 const raiz = document.getElementById('app');
 let actual = null;
 

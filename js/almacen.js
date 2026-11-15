@@ -1,4 +1,5 @@
 // Guardado local. Los datos nunca salen del dispositivo.
+import { fijosValidos } from './fijos.js';
 
 export function cuentasPorDefecto() {
   return ['Efectivo', 'BNB', 'Altoke'].map((nombre, orden) => ({
@@ -24,7 +25,7 @@ export function ponerAlDia(datos) {
   }
   return {
     ...datos,
-    ajustes: { ...datos.ajustes, categorias },
+    ajustes: { ...datos.ajustes, categorias, fijos: fijosValidos(datos.ajustes.fijos) },
     movimientos: datos.movimientos.map((m) => (RENOMBRADAS.has(m.categoria) ? { ...m, categoria: nombre(m.categoria) } : m)),
   };
 }
@@ -34,6 +35,7 @@ export function ajustesPorDefecto() {
     diaMensualidad: 1,
     categorias: [...CATEGORIAS],
     origenes: ['Mensualidad', 'Delivery', 'Arreglo', 'Código', 'Otro'],
+    fijos: [],           // pagos que se repiten: { id, nombre, estimado, dia (1–28 o null) }
     ultimaCuentaId: null,
     inicio: null,        // día en que empezó a usar la app, "2026-11-14"
     configurada: false,
@@ -62,6 +64,7 @@ export function crearAlmacenMemoria() {
     },
     async guardarCuentas(nuevas) { cuentas = copia(nuevas); },
     async guardarAjustes(nuevos) { ajustes = copia(nuevos); },
+    async actualizarAjustes(cambio) { ajustes = copia(cambio(copia(ajustes ?? ajustesPorDefecto()))); },
     async agregarMovimiento(mov) { movimientos.set(mov.id, copia(mov)); },
     async borrarMovimiento(id) { movimientos.delete(id); },
     async reemplazarTodo(datos) {
@@ -144,6 +147,19 @@ export async function abrirAlmacen() {
     async guardarAjustes(ajustes) {
       const t = await tx(['ajustes'], 'readwrite');
       t.objectStore('ajustes').put(ajustes, 'ajustes');
+      await terminar(t);
+    },
+    /**
+     * Lee, cambia y guarda los ajustes en una sola transacción, para no
+     * pisar lo que otra ventana de Marea haya guardado entretanto.
+     */
+    async actualizarAjustes(cambio) {
+      const t = await tx(['ajustes'], 'readwrite');
+      const almacen = t.objectStore('ajustes');
+      const lectura = almacen.get('ajustes');
+      lectura.onsuccess = () => {
+        try { almacen.put(cambio({ ...ajustesPorDefecto(), ...(lectura.result ?? {}) }), 'ajustes'); } catch { t.abort(); }
+      };
       await terminar(t);
     },
     async agregarMovimiento(mov) {

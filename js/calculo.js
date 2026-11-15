@@ -1,5 +1,6 @@
 // Saldos, ciclo de mensualidad y monto por día. Todo en centavos.
 import { claveDia, diasEntre } from './fechas.js';
+import { estadoFijos, esPagoFijo } from './fijos.js';
 
 /** Saldo de cada cuenta: saldo inicial − gastos + ingresos. */
 export function saldos(cuentas, movimientos) {
@@ -43,6 +44,15 @@ function ultimaMensualidad(movimientos) {
   return ultima === null ? null : claveDia(ultima);
 }
 
+/** Instante de la mensualidad que abrió el ciclo actual, o null si aún no hubo ninguna. */
+function inicioCicloMs(movimientos, hoy) {
+  let ultima = null;
+  for (const m of movimientos) {
+    if (m.tipo === 'ingreso' && m.origen === 'Mensualidad' && claveDia(m.fecha) <= hoy && (ultima === null || m.fecha > ultima)) ultima = m.fecha;
+  }
+  return ultima;
+}
+
 /** Todo lo que Inicio necesita saber. */
 export function resumen(cuentas, movimientos, ajustes, ahoraMs) {
   const hoy = claveDia(ahoraMs);
@@ -50,9 +60,19 @@ export function resumen(cuentas, movimientos, ajustes, ahoraMs) {
   let disponible = 0;
   for (const c of cuentas) if (!c.archivada) disponible += porCuenta.get(c.id);
 
+  // Lo que falta pagar de los fijos se aparta: no cuenta para gastar.
+  const inicioCiclo = cortesDeCiclo(movimientos, ajustes, hoy).at(-1);
+  const fijos = estadoFijos(ajustes.fijos, movimientos, inicioCiclo, hoy, inicioCicloMs(movimientos, hoy));
+  disponible -= fijos.porPagar;
+
+  // Pagar un fijo no es gasto de hoy: esa plata ya estaba apartada. Solo
+  // cuenta lo que costó de más sobre lo estimado.
+  const estimados = new Map(fijos.lista.map((e) => [e.fijo.id, e.fijo.estimado]));
+  const idsFijos = new Set(estimados.keys());
   let gastadoHoy = 0;
   for (const m of movimientos) {
-    if (m.tipo === 'gasto' && claveDia(m.fecha) === hoy) gastadoHoy += m.monto;
+    if (m.tipo !== 'gasto' || claveDia(m.fecha) !== hoy) continue;
+    gastadoHoy += esPagoFijo(m, idsFijos) ? Math.max(0, m.monto - estimados.get(m.fijoId)) : m.monto;
   }
 
   const proxima = proximaMensualidad(hoy, ultimaMensualidad(movimientos), ajustes.diaMensualidad, ajustes.inicio ?? null);
@@ -65,7 +85,7 @@ export function resumen(cuentas, movimientos, ajustes, ahoraMs) {
     disponible, dias, esperando, porDia, gastadoHoy,
     sobraHoy: Math.max(0, porDia - gastadoHoy),
     excesoHoy: Math.max(0, gastadoHoy - porDia),
-    saldos: porCuenta,
+    saldos: porCuenta, apartado: fijos.porPagar, inicioCiclo, fijos,
   };
 }
 
@@ -78,27 +98,63 @@ export function avisoGasto(r, monto) {
 }
 
 /**
- * Gasto acumulado día por día del ciclo actual y del anterior, para
- * compararlos. Un ciclo empieza con cada mensualidad; el primero, el día
- * en que empezó a usar la app. `actual[i]` es lo gastado hasta el día i.
+ * Días en que empezó cada ciclo, en orden. Un ciclo empieza con cada
+ * mensualidad; el primero, el día en que empezó a usar la app.
  */
-export function gastoPorCiclo(movimientos, ajustes, ahoraMs) {
-  const hoy = claveDia(ahoraMs);
+export function cortesDeCiclo(movimientos, ajustes, hoy) {
   const cortes = new Set();
   if (ajustes.inicio) cortes.add(ajustes.inicio);
   for (const m of movimientos) if (m.tipo === 'ingreso' && m.origen === 'Mensualidad') cortes.add(claveDia(m.fecha));
   const orden = [...cortes].filter((c) => c <= hoy).sort();
   if (!orden.length) {
-    const primero = movimientos.reduce((min, m) => (claveDia(m.fecha) < min ? claveDia(m.fecha) : min), hoy);
-    orden.push(primero);
+    orden.push(movimientos.reduce((min, m) => (claveDia(m.fecha) < min ? claveDia(m.fecha) : min), hoy));
   }
+  return orden;
+}
+
+/**
+ * El ciclo actual en cifras, para Presupuesto. `queda` ya descuenta lo
+ * apartado para pagos fijos; `presupuesto` es lo que había para gastar
+ * libremente: lo ya gastado más lo que queda.
+ */
+export function resumenCiclo(cuentas, movimientos, ajustes, ahoraMs) {
+  const r = resumen(cuentas, movimientos, ajustes, ahoraMs);
+  const idsFijos = new Set(r.fijos.lista.map((e) => e.fijo.id));
+  let gastado = 0;
+  let mensualidad = 0;
+  let sueltos = 0;
+  for (const m of movimientos) {
+    if (claveDia(m.fecha) < r.inicioCiclo) continue;
+    if (m.tipo === 'gasto' && !esPagoFijo(m, idsFijos)) gastado += m.monto;
+    else if (m.tipo === 'ingreso' && m.origen === 'Mensualidad') mensualidad += m.monto;
+    else if (m.tipo === 'ingreso') sueltos += m.monto;
+  }
+  const queda = Math.max(0, r.disponible);
+  return {
+    gastado, queda, presupuesto: gastado + queda,
+    porDia: r.porDia, dias: r.dias, esperando: r.esperando,
+    fijosPorPagar: r.fijos.porPagar, fijosPagado: r.fijos.pagado,
+    mensualidad, sueltos, entrado: mensualidad + sueltos,
+  };
+}
+
+/**
+ * Gasto acumulado (sin pagos fijos) día por día del ciclo actual y del anterior, para
+ * compararlos. Un ciclo empieza con cada mensualidad; el primero, el día
+ * en que empezó a usar la app. `actual[i]` es lo gastado hasta el día i.
+ */
+export function gastoPorCiclo(movimientos, ajustes, ahoraMs) {
+  const hoy = claveDia(ahoraMs);
+  const orden = cortesDeCiclo(movimientos, ajustes, hoy);
   const inicio = orden.at(-1);
   const inicioAnterior = orden.at(-2) ?? null;
 
+  const idsFijos = new Set((Array.isArray(ajustes.fijos) ? ajustes.fijos : []).map((f) => f.id));
   const acumular = (desde, dias) => {
     const porDia = new Array(Math.max(1, dias)).fill(0);
     for (const m of movimientos) {
-      if (m.tipo !== 'gasto') continue;
+      // Los pagos fijos no cuentan: ya estaban apartados y no son gasto del día a día.
+      if (m.tipo !== 'gasto' || esPagoFijo(m, idsFijos)) continue;
       const i = diasEntre(desde, claveDia(m.fecha));
       if (i >= 0 && i < dias) porDia[i] += m.monto;
     }
