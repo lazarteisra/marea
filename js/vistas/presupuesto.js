@@ -2,6 +2,7 @@
 import { el, svg } from '../dom.js';
 import { resumenCiclo, gastoPorCiclo } from '../calculo.js';
 import { aTexto, aBsEnteros } from '../dinero.js';
+import { gastoPorCategoria } from '../categorias.js';
 
 /** Textos de la tarjeta "Este ciclo". Pura, para poder probarla. */
 export function textosCiclo(g) {
@@ -61,12 +62,42 @@ export function textosPresupuesto(c) {
   };
 }
 
+/** Texto y barra de una fila de categoría. Pura, para poder probarla. */
+export function textosCategoria(f, mayor) {
+  let detalle;
+  if (f.tope !== null) {
+    const resto = f.tope - f.gastado;
+    detalle = resto >= 0 ? `de ${aTexto(f.tope)} · te quedan ${aTexto(resto)}` : `de ${aTexto(f.tope)} · te pasaste ${aTexto(-resto)}`;
+  } else if (f.antes === null) detalle = '';
+  else if (f.antes === 0) detalle = 'nada el ciclo pasado a esta altura';
+  else detalle = `${aTexto(f.antes)} el ciclo pasado a esta altura`;
+  const base = f.tope ?? mayor;
+  return {
+    monto: aTexto(f.gastado),
+    detalle,
+    avance: base > 0 ? Math.min(100, Math.round((f.gastado / base) * 100)) : 0,
+    pasado: f.tope !== null && f.gastado > f.tope,
+  };
+}
+
+function filaCategoria(ctx, f, mayor) {
+  const t = textosCategoria(f, mayor);
+  const avance = el('i');
+  avance.style.width = t.avance + '%';
+  return el('button', { class: 'cat' + (t.pasado ? ' pasada' : ''), type: 'button', onclick: () => ctx.ir('categoria', { categoria: f.categoria }) },
+    el('span', { class: 'cat-cab' }, el('b', {}, f.categoria), el('span', {}, t.monto)),
+    el('span', { class: 'pista' }, avance),
+    t.detalle ? el('small', {}, t.detalle) : null);
+}
+
 export function presupuesto(ctx) {
   const { cuentas, movimientos, ajustes } = ctx.estado;
   const c = resumenCiclo(cuentas, movimientos, ajustes, ctx.ahora());
   const t = textosPresupuesto(c);
   const g = gastoPorCiclo(movimientos, ajustes, ctx.ahora());
   const tc = textosCiclo(g);
+  const cat = gastoPorCategoria(movimientos, ajustes, ctx.ahora());
+  const mayor = cat.lista.reduce((max, f) => Math.max(max, f.gastado), 0);
 
   const avance = el('i');
   avance.style.width = t.avance + '%';
@@ -86,6 +117,14 @@ export function presupuesto(ctx) {
         el('small', {}, 'Pagos fijos'), el('b', {}, t.fijos), el('span', {}, t.fijosDetalle)),
       el('div', { class: 'tarjeta' },
         el('small', {}, 'Ingresos'), el('b', {}, t.entrado), el('span', {}, t.entradoDetalle))),
+
+    el('section', { class: 'bloque' },
+      el('h2', { class: 'bloque-titulo' }, 'En qué se fue'),
+      cat.lista.length
+        ? el('div', { class: 'cats' }, cat.lista.map((f) => filaCategoria(ctx, f, mayor)))
+        : el('p', { class: 'vacio' }, 'Aún no hay gastos en este ciclo.'),
+      cat.invite > 0 ? el('p', { class: 'vacio' }, `De eso, ${aTexto(cat.invite)} Bs fue invitando tú.`) : null,
+      cat.lista.length ? el('p', { class: 'vacio' }, 'Toca una categoría para ver sus gastos o ponerle un tope.') : null),
 
     el('section', { class: 'bloque' },
       el('h2', { class: 'bloque-titulo' }, 'Este ciclo'),

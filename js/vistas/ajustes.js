@@ -19,7 +19,7 @@ export function ajustes(ctx) {
       dia.value = ctx.estado.ajustes.diaMensualidad;
       return;
     }
-    await ctx.almacen.guardarAjustes({ ...ctx.estado.ajustes, diaMensualidad: n });
+    await ctx.almacen.actualizarAjustes((a) => ({ ...a, diaMensualidad: n }));
     await ctx.recargar();
     estadoDia.textContent = 'Guardado.';
   });

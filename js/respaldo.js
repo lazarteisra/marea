@@ -48,7 +48,7 @@ function leerMovimiento(m, idsCuentas) {
   if (!esTexto(nota)) return null;
   const comun = { id: m.id, tipo: m.tipo, monto: m.monto, cuentaId: m.cuentaId, fecha: m.fecha, nota };
   if (m.tipo === 'gasto') {
-    if (!esTexto(m.categoria, 1, 40) || !['mi', 'invite', 'devuelven'].includes(m.paraQuien)) return null;
+    if (!esTexto(m.categoria, 1, 40) || m.categoria.trim() === '' || !['mi', 'invite', 'devuelven'].includes(m.paraQuien)) return null;
     const gasto = { ...comun, categoria: m.categoria, paraQuien: m.paraQuien };
     if (m.paraQuien === 'devuelven') {
       // Te devuelven todo o una parte, nunca más de lo que costó.
@@ -94,9 +94,17 @@ function leerAjustes(a, idsCuentas) {
   if (!esLista(crudos, 30)) return null;
   const fijos = crudos.map(leerFijo);
   if (fijos.includes(null) || new Set(fijos.map((f) => f.id)).size !== fijos.length) return null;
+  // Igual con los topes por categoría.
+  const topes = a.topes ?? [];
+  if (!esLista(topes, 50)) return null;
+  for (const t of topes) {
+    if (!esObjeto(t) || !esTexto(t.categoria, 1, 40) || t.categoria.trim() === '' || !esEntero(t.monto, 1, MONTO_MAX)) return null;
+  }
+  if (new Set(topes.map((t) => t.categoria)).size !== topes.length) return null;
   return {
     diaMensualidad: a.diaMensualidad, categorias: [...a.categorias], origenes: [...a.origenes],
     ultimaCuentaId: ultima, inicio, configurada: a.configurada, fijos,
+    topes: topes.map((t) => ({ categoria: t.categoria, monto: t.monto })),
   };
 }
 

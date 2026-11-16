@@ -62,11 +62,11 @@ export function fechaHora(ms, ahoraMs) {
   return tituloDia(claveDia(ms), claveDia(ahoraMs)) + ', ' + horaDe(ms);
 }
 
-/** Una línea de la lista de movimientos; al tocarla se abre para editar. */
-export function filaMovimiento(m, cuentas, alTocar) {
+/** Una línea de la lista de movimientos; al tocarla se abre para editar. Con `ahoraMs` la fila dice también el día ("Ayer, 20:10"). */
+export function filaMovimiento(m, cuentas, alTocar, ahoraMs = null) {
   const nombre = (id) => cuentas.find((c) => c.id === id)?.nombre;
   const cuenta = nombre(m.cuentaId);
-  const hora = horaDe(m.fecha);
+  const hora = ahoraMs === null ? horaDe(m.fecha) : fechaHora(m.fecha, ahoraMs);
   let titulo;
   let partes;
   let signo = '';

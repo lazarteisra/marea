@@ -182,6 +182,17 @@ button.tarjeta:active { border-color: var(--mar); }
 .deudor small { display: block; font-size: 12.5px; color: var(--suave); margin-top: 2px; }
 .bloque .agregar { margin-top: 14px; }
 
+.cats { margin-top: 6px; }
+.cat { display: block; width: 100%; padding: 13px 0 12px; text-align: left; background: none; border: 0; border-bottom: 1px solid var(--linea); }
+.cat:active { background: var(--capa); }
+.cat-cab { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 9px; }
+.cat-cab b { font-weight: 500; font-size: 15px; }
+.cat-cab span { font-size: 16px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.cat .pista { display: block; }
+.cat small { display: block; font-size: 12.5px; color: var(--suave); margin-top: 9px; }
+.cat.pasada .pista i, .cat.pasada .pista i::after { background: var(--rojo); }
+.cat.pasada small { color: var(--rojo); }
+
 /* ---------- inicio ---------- */
 
 .frase { color: var(--suave); margin-top: 30px; }

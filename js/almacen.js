@@ -1,5 +1,6 @@
 // Guardado local. Los datos nunca salen del dispositivo.
 import { fijosValidos } from './fijos.js';
+import { topesValidos } from './categorias.js';
 
 export function cuentasPorDefecto() {
   return ['Efectivo', 'BNB', 'Altoke'].map((nombre, orden) => ({
@@ -34,9 +35,11 @@ export function ponerAlDia(datos) {
   }
   return {
     ...datos,
-    ajustes: { ...datos.ajustes, categorias, fijos: fijosValidos(datos.ajustes.fijos) },
+    ajustes: { ...datos.ajustes, categorias, fijos: fijosValidos(datos.ajustes.fijos), topes: topesValidos(Array.isArray(datos.ajustes.topes) ? datos.ajustes.topes.map((t) => (t && typeof t === 'object' ? { ...t, categoria: nombre(t.categoria) } : t)) : []) },
     movimientos: datos.movimientos.filter(movimientoEntendible).map((m) => {
       let limpio = RENOMBRADAS.has(m.categoria) ? { ...m, categoria: nombre(m.categoria) } : m;
+      // Un gasto sin categoría legible se muestra como "Otro" en vez de romper las listas.
+      if (limpio.tipo === 'gasto' && (typeof limpio.categoria !== 'string' || limpio.categoria.trim() === '')) limpio = { ...limpio, categoria: 'Otro' };
       if (limpio.tipo === 'gasto' && (limpio.persona !== undefined || limpio.devuelven !== undefined || limpio.paraQuien === 'devuelven')) {
         // "Me lo devuelven" solo vale completo: con nombre y un monto entre 1 y lo que costó.
         const completo = limpio.paraQuien === 'devuelven' && conNombre(limpio)
@@ -58,6 +61,7 @@ export function ajustesPorDefecto() {
     categorias: [...CATEGORIAS],
     origenes: ['Mensualidad', 'Delivery', 'Arreglo', 'Código', 'Otro'],
     fijos: [],           // pagos que se repiten: { id, nombre, estimado, dia (1–28 o null) }
+    topes: [],           // tope de gasto por ciclo: { categoria, monto }
     ultimaCuentaId: null,
     inicio: null,        // día en que empezó a usar la app, "2026-11-14"
     configurada: false,

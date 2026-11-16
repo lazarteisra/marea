@@ -10,9 +10,10 @@ import { movimientos } from './vistas/movimientos.js';
 import { presupuesto } from './vistas/presupuesto.js';
 import { fijos, fijo, pagarFijo } from './vistas/fijos.js';
 import { total, paso, prestamo, cobro } from './vistas/total.js';
+import { categoria } from './vistas/categoria.js';
 import { barraPestanas, VISTAS_CON_BARRA } from './vistas/piezas.js';
 
-const vistas = { primeraVez, inicio, registrar, ingreso, ajustes, movimientos, presupuesto, fijos, fijo, pagarFijo, total, paso, prestamo, cobro };
+const vistas = { primeraVez, inicio, registrar, ingreso, ajustes, movimientos, presupuesto, fijos, fijo, pagarFijo, total, paso, prestamo, cobro, categoria };
 const raiz = document.getElementById('app');
 let actual = null;
 

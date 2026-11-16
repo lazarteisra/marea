@@ -4,6 +4,8 @@ import { aCentavos, aTexto } from '../dinero.js';
 import { resumen, avisoGasto } from '../calculo.js';
 import { ordenarPorUso, partesAviso, crearGuardador, detallesRecientes } from '../registro.js';
 import { deudas } from '../deudas.js';
+import { claveDia } from '../fechas.js';
+import { gastoPorCategoria, excesoDeTope } from '../categorias.js';
 import { campoMonto, grupoChips, horaCorta, fechaHora, botonBorrar } from './piezas.js';
 
 export function registrar(ctx, { mov = null, volver = 'inicio' } = {}) {
@@ -14,6 +16,10 @@ export function registrar(ctx, { mov = null, volver = 'inicio' } = {}) {
   const categorias = ordenarPorUso(ajustes.categorias, movimientos, 'categoria');
   if (mov && !categorias.includes(mov.categoria)) categorias.push(mov.categoria);
 
+  // Al cambiar un gasto, él mismo no cuenta: si no, se sumaría dos veces.
+  const porCategoria = gastoPorCategoria(mov ? movimientos.filter((m) => m.id !== mov.id) : movimientos, ajustes, ctx.ahora());
+  // El tope es del ciclo actual: un gasto de un ciclo viejo no lo toca.
+  const cuentaParaTope = !mov || claveDia(mov.fecha) >= porCategoria.inicio;
   const aviso = el('p', { class: 'aviso', 'aria-live': 'polite' });
   const guardarBoton = el('button', { class: 'boton boton-pri', type: 'submit', disabled: true }, mov ? 'Guardar cambios' : 'Guardar gasto');
 
@@ -63,9 +69,16 @@ export function registrar(ctx, { mov = null, volver = 'inicio' } = {}) {
     const dev = leerDevuelven(centavos);
     guardarBoton.disabled = centavos === null || enQue.valor() === null || !dev.vale;
     if (centavos !== null && loDevuelven && aCentavos(devuelven.value) > centavos) { aviso.replaceChildren('No te pueden devolver más de lo que costó.'); return; }
-    if (centavos === null || mov) { aviso.replaceChildren(); return; }
-    aviso.replaceChildren(...partesAviso(avisoGasto(r, centavos, centavos - dev.devuelven), r.dias > 1).map((p) =>
-      p.tipo ? el('b', { class: p.tipo === 'pasa' ? 'pasa' : null }, p.texto) : p.texto));
+    if (centavos === null) { aviso.replaceChildren(); return; }
+    const propio = centavos - dev.devuelven;
+    const sobreTope = enQue.valor() === null || !cuentaParaTope ? 0 : excesoDeTope(porCategoria, enQue.valor(), propio);
+    const parteTope = sobreTope > 0 ? ['Pasas tu tope de ', enQue.valor(), ' por ', el('b', { class: 'pasa' }, `${aTexto(sobreTope)} Bs`), '. '] : [];
+    // Al cambiar un gasto ya guardado solo se avisa del tope.
+    if (mov) { aviso.replaceChildren(...parteTope); return; }
+    aviso.replaceChildren(
+      ...parteTope,
+      ...partesAviso(avisoGasto(r, centavos, propio), r.dias > 1).map((p) =>
+        p.tipo ? el('b', { class: p.tipo === 'pasa' ? 'pasa' : null }, p.texto) : p.texto));
   }
 
   // Fuera del guardador: si algo falla después de guardar, reintentar no crea otro.
