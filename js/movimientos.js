@@ -23,6 +23,8 @@ export function agruparPorDia(movimientos) {
     if (!grupos.has(dia)) grupos.set(dia, { dia, gastado: 0, entrado: 0, movimientos: [] });
     const g = grupos.get(dia);
     g.movimientos.push(m);
+    // Los ajustes de cuadre y lo anotado al cuadrar no son de ese día: no entran en su cabecera.
+    if (m.ajuste || m.alCuadrar) continue;
     if (m.tipo === 'gasto') g.gastado += gastoPropio(m);
     else if (m.tipo === 'ingreso') g.entrado += m.monto;
   }

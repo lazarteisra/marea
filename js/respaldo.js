@@ -1,4 +1,5 @@
 // Exportar e importar todos los datos como un archivo.
+import { borradorValido, ultimoValido, marcasLimpias } from './cuadre.js';
 
 const VERSION = 1;
 const TAM_MAX = 5 * 1024 * 1024;
@@ -50,18 +51,23 @@ function leerMovimiento(m, idsCuentas) {
   if (m.tipo === 'gasto') {
     if (!esTexto(m.categoria, 1, 40) || m.categoria.trim() === '' || !['mi', 'invite', 'devuelven'].includes(m.paraQuien)) return null;
     const gasto = { ...comun, categoria: m.categoria, paraQuien: m.paraQuien };
+    if (m.ajuste !== undefined && typeof m.ajuste !== 'boolean') return null;
+    if (m.alCuadrar !== undefined && typeof m.alCuadrar !== 'boolean') return null;
+    if (m.ajuste) gasto.ajuste = true;
+    if (m.alCuadrar) gasto.alCuadrar = true;
     if (m.paraQuien === 'devuelven') {
       // Te devuelven todo o una parte, nunca más de lo que costó.
       if (!esPersona(m.persona) || !esEntero(m.devuelven, 1, m.monto)) return null;
       gasto.persona = m.persona.trim();
       gasto.devuelven = m.devuelven;
     }
-    if (m.fijoId === undefined || m.fijoId === null) return gasto;
-    return esTexto(m.fijoId, 1, 60) ? { ...gasto, fijoId: m.fijoId } : null;
+    if (m.fijoId === undefined || m.fijoId === null) return marcasLimpias(gasto);
+    return esTexto(m.fijoId, 1, 60) ? marcasLimpias({ ...gasto, fijoId: m.fijoId }) : null;
   }
   if (m.tipo === 'ingreso') {
     if (!esTexto(m.origen, 1, 40)) return null;
-    return { ...comun, origen: m.origen };
+    if (m.ajuste !== undefined && typeof m.ajuste !== 'boolean') return null;
+    return m.ajuste ? marcasLimpias({ ...comun, origen: m.origen, ajuste: true }) : { ...comun, origen: m.origen };
   }
   if (m.tipo === 'paso') {
     if (!idsCuentas.has(m.cuentaDestinoId) || m.cuentaDestinoId === m.cuentaId) return null;
@@ -94,6 +100,19 @@ function leerAjustes(a, idsCuentas) {
   if (!esLista(crudos, 30)) return null;
   const fijos = crudos.map(leerFijo);
   if (fijos.includes(null) || new Set(fijos.map((f) => f.id)).size !== fijos.length) return null;
+  // El cuadre a medias y el último terminado: si vienen, tienen que estar enteros.
+  const cuadre = a.cuadre ?? null;
+  if (cuadre !== null) {
+    const limpio = borradorValido(cuadre);
+    if (!limpio || limpio.reales.length !== cuadre.reales.length) return null;
+    if (limpio.fecha < FECHA_MIN || limpio.fecha > FECHA_MAX) return null;
+    if (limpio.reales.some((r) => !idsCuentas.has(r.cuentaId) || r.monto > SALDO_MAX)) return null;
+  }
+  const ultimoCuadre = a.ultimoCuadre ?? null;
+  if (ultimoCuadre !== null) {
+    const limpio = ultimoValido(ultimoCuadre);
+    if (!limpio || limpio.fecha < FECHA_MIN || limpio.fecha > FECHA_MAX || Math.abs(limpio.total) > SALDO_MAX * 50) return null;
+  }
   // Igual con los topes por categoría.
   const topes = a.topes ?? [];
   if (!esLista(topes, 50)) return null;
@@ -105,6 +124,7 @@ function leerAjustes(a, idsCuentas) {
     diaMensualidad: a.diaMensualidad, categorias: [...a.categorias], origenes: [...a.origenes],
     ultimaCuentaId: ultima, inicio, configurada: a.configurada, fijos,
     topes: topes.map((t) => ({ categoria: t.categoria, monto: t.monto })),
+    cuadre: borradorValido(cuadre), ultimoCuadre: ultimoValido(ultimoCuadre),
   };
 }
 

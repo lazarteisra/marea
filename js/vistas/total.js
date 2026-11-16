@@ -5,6 +5,8 @@ import { aCentavos, aTexto, aBsEnteros } from '../dinero.js';
 import { saldos } from '../calculo.js';
 import { deudas } from '../deudas.js';
 import { serieTotal, tramo } from '../total.js';
+import { estadoCuadre, borradorVigente } from '../cuadre.js';
+import { textoEstadoCuadre } from './cuadrar.js';
 import { crearGuardador } from '../registro.js';
 import { campoMonto, grupoChips, avisoDeshacer, botonBorrar, horaCorta, fechaHora } from './piezas.js';
 
@@ -54,6 +56,7 @@ export function total(ctx) {
   const d = deudas(movimientos);
   const serie = serieTotal(cuentas, movimientos, ajustes, ctx.ahora());
   const ahora = serie.at(-1).total;
+  const cuadre = estadoCuadre(ajustes, ctx.ahora());
   const numero = (ahora < 0 ? '−' : '') + aBsEnteros(Math.abs(ahora));
 
   let rango = RANGOS[0];
@@ -86,6 +89,9 @@ export function total(ctx) {
       el('h2', { class: 'bloque-titulo' }, 'Tus cuentas'),
       el('div', { class: 'cuentas' }, activas.map((c) =>
         el('div', { class: 'cta' }, el('span', {}, c.nombre), el('b', {}, aTexto(porCuenta.get(c.id)))))),
+      el('p', { class: 'vacio' + (cuadre.recordar && cuadre.dias !== null ? ' toca' : '') }, textoEstadoCuadre(cuadre)),
+      el('button', { class: 'boton boton-sec agregar', type: 'button', onclick: () => ctx.ir('cuadrar') },
+        borradorVigente(ajustes, cuentas, ctx.ahora()) ? 'Seguir cuadrando' : 'Cuadrar'),
       activas.length > 1
         ? el('button', { class: 'boton boton-sec agregar', type: 'button', onclick: () => ctx.ir('paso') }, 'Pasar plata entre cuentas')
         : null),
@@ -129,16 +135,16 @@ function formulario(ctx, { mov, volver, titulo, botonTexto, cuerpo, aviso, guard
 const cuentaPreferida = (activas, ajustes) => (activas.some((c) => c.id === ajustes.ultimaCuentaId) ? ajustes.ultimaCuentaId : activas[0].id);
 
 /** Pasar plata de una cuenta a otra (por ejemplo, sacar efectivo del banco). */
-export function paso(ctx, { mov = null, volver = 'total' } = {}) {
+export function paso(ctx, { mov = null, volver = 'total', sugerido = null } = {}) {
   const { cuentas } = ctx.estado;
   const activas = cuentas.filter((c) => !c.archivada);
   const opciones = activas.map((c) => ({ valor: c.id, texto: c.nombre }));
   const aviso = el('p', { class: 'aviso', 'aria-live': 'polite' });
   const guardarBoton = el('button', { class: 'boton boton-pri', type: 'submit', disabled: true });
 
-  const monto = campoMonto(actualizar, mov ? aTexto(mov.monto) : '');
-  const de = grupoChips('¿De dónde sale?', opciones, mov?.cuentaId ?? null, actualizar);
-  const a = grupoChips('¿A dónde entra?', opciones, mov?.cuentaDestinoId ?? null, actualizar);
+  const monto = campoMonto(actualizar, mov ? aTexto(mov.monto) : (sugerido?.monto ? aTexto(sugerido.monto) : ''));
+  const de = grupoChips('¿De dónde sale?', opciones, mov?.cuentaId ?? sugerido?.de ?? null, actualizar);
+  const a = grupoChips('¿A dónde entra?', opciones, mov?.cuentaDestinoId ?? sugerido?.a ?? null, actualizar);
 
   function leer() {
     const centavos = aCentavos(monto.entrada.value);
@@ -162,17 +168,17 @@ export function paso(ctx, { mov = null, volver = 'total' } = {}) {
 }
 
 /** Prestar plata directamente (no ligada a una compra). */
-export function prestamo(ctx, { mov = null, volver = 'total' } = {}) {
+export function prestamo(ctx, { mov = null, volver = 'total', sugerido = null } = {}) {
   const { cuentas, movimientos, ajustes } = ctx.estado;
   const activas = cuentas.filter((c) => !c.archivada);
   const aviso = el('p', { class: 'aviso', 'aria-live': 'polite' });
   const guardarBoton = el('button', { class: 'boton boton-pri', type: 'submit', disabled: true });
 
-  const monto = campoMonto(actualizar, mov ? aTexto(mov.monto) : '');
+  const monto = campoMonto(actualizar, mov ? aTexto(mov.monto) : (sugerido?.monto ? aTexto(sugerido.monto) : ''));
   const persona = el('input', { class: 'nota', maxlength: 40, placeholder: 'Nombre', 'aria-label': '¿A quién le prestaste?', autocomplete: 'off', enterkeyhint: 'done', value: mov?.persona || null, oninput: actualizar });
   const conocidos = el('div', { class: 'chips chips-mini' }, deudas(movimientos).recientes.slice(0, 6).map((nombre) =>
     el('button', { class: 'chip chip-mini', type: 'button', onclick: () => { persona.value = nombre; actualizar(); } }, nombre)));
-  const de = grupoChips('¿De qué cuenta salió?', activas.map((c) => ({ valor: c.id, texto: c.nombre })), mov?.cuentaId ?? cuentaPreferida(activas, ajustes), actualizar);
+  const de = grupoChips('¿De qué cuenta salió?', activas.map((c) => ({ valor: c.id, texto: c.nombre })), mov?.cuentaId ?? sugerido?.cuentaId ?? cuentaPreferida(activas, ajustes), actualizar);
 
   function actualizar() {
     guardarBoton.disabled = aCentavos(monto.entrada.value) === null || persona.value.trim() === '';
@@ -191,15 +197,17 @@ export function prestamo(ctx, { mov = null, volver = 'total' } = {}) {
 }
 
 /** "Me pagó": viene con todo lo que debe; si pagó una parte, se baja el monto. */
-export function cobro(ctx, { mov = null, persona = null, debe = 0, volver = 'total' } = {}) {
+export function cobro(ctx, { mov = null, persona = null, debe = 0, volver = 'total', sugerido = null } = {}) {
   const { cuentas, ajustes } = ctx.estado;
   const activas = cuentas.filter((c) => !c.archivada);
   const quien = mov?.persona ?? persona;
   const aviso = el('p', { class: 'aviso', 'aria-live': 'polite' });
   const guardarBoton = el('button', { class: 'boton boton-pri', type: 'submit', disabled: true });
 
-  const monto = campoMonto(actualizar, mov ? aTexto(mov.monto) : (debe > 0 ? aTexto(debe) : ''));
-  const a = grupoChips('¿A qué cuenta entró?', activas.map((c) => ({ valor: c.id, texto: c.nombre })), mov?.cuentaId ?? cuentaPreferida(activas, ajustes), actualizar);
+  // Desde Cuadrar llega cuánto sobró: se propone eso, sin pasar de lo que debe.
+  const propuesto = sugerido?.monto ? Math.min(sugerido.monto, debe > 0 ? debe : sugerido.monto) : debe;
+  const monto = campoMonto(actualizar, mov ? aTexto(mov.monto) : (propuesto > 0 ? aTexto(propuesto) : ''));
+  const a = grupoChips('¿A qué cuenta entró?', activas.map((c) => ({ valor: c.id, texto: c.nombre })), mov?.cuentaId ?? sugerido?.cuentaId ?? cuentaPreferida(activas, ajustes), actualizar);
 
   function actualizar() {
     const centavos = aCentavos(monto.entrada.value);

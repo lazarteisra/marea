@@ -5,25 +5,27 @@ import { resumen, avisoGasto } from '../calculo.js';
 import { ordenarPorUso, partesAviso, crearGuardador, detallesRecientes } from '../registro.js';
 import { deudas } from '../deudas.js';
 import { claveDia } from '../fechas.js';
+import { SIN_EXPLICAR } from '../cuadre.js';
 import { gastoPorCategoria, excesoDeTope } from '../categorias.js';
 import { campoMonto, grupoChips, horaCorta, fechaHora, botonBorrar } from './piezas.js';
 
-export function registrar(ctx, { mov = null, volver = 'inicio' } = {}) {
+export function registrar(ctx, { mov = null, volver = 'inicio', sugerido = null } = {}) {
   const { cuentas, movimientos, ajustes } = ctx.estado;
   const activas = cuentas.filter((c) => !c.archivada);
   const r = resumen(cuentas, movimientos, ajustes, ctx.ahora());
-  const cuentaInicial = mov?.cuentaId ?? (activas.some((c) => c.id === ajustes.ultimaCuentaId) ? ajustes.ultimaCuentaId : activas[0].id);
+  const cuentaInicial = mov?.cuentaId ?? sugerido?.cuentaId ?? (activas.some((c) => c.id === ajustes.ultimaCuentaId) ? ajustes.ultimaCuentaId : activas[0].id);
   const categorias = ordenarPorUso(ajustes.categorias, movimientos, 'categoria');
   if (mov && !categorias.includes(mov.categoria)) categorias.push(mov.categoria);
 
   // Al cambiar un gasto, él mismo no cuenta: si no, se sumaría dos veces.
   const porCategoria = gastoPorCategoria(mov ? movimientos.filter((m) => m.id !== mov.id) : movimientos, ajustes, ctx.ahora());
   // El tope es del ciclo actual: un gasto de un ciclo viejo no lo toca.
+  const deCuadre = !mov && volver === 'cuadrar';
   const cuentaParaTope = !mov || claveDia(mov.fecha) >= porCategoria.inicio;
   const aviso = el('p', { class: 'aviso', 'aria-live': 'polite' });
   const guardarBoton = el('button', { class: 'boton boton-pri', type: 'submit', disabled: true }, mov ? 'Guardar cambios' : 'Guardar gasto');
 
-  const monto = campoMonto(actualizar, mov ? aTexto(mov.monto) : '');
+  const monto = campoMonto(actualizar, mov ? aTexto(mov.monto) : (sugerido?.monto ? aTexto(sugerido.monto) : ''));
   const enQue = grupoChips('¿En qué?', categorias.map((c) => ({ valor: c, texto: c })), mov?.categoria ?? null, actualizar);
   const paraQuien = grupoChips('¿Para quién?', [{ valor: 'mi', texto: 'Para mí' }, { valor: 'invite', texto: 'Invité yo' }, { valor: 'devuelven', texto: 'Me lo devuelven' }], mov?.paraQuien ?? 'mi', actualizar);
   const conQue = grupoChips('¿Con qué pagaste?', activas.map((c) => ({ valor: c.id, texto: c.nombre })), cuentaInicial, actualizar);
@@ -75,6 +77,7 @@ export function registrar(ctx, { mov = null, volver = 'inicio' } = {}) {
     const parteTope = sobreTope > 0 ? ['Pasas tu tope de ', enQue.valor(), ' por ', el('b', { class: 'pasa' }, `${aTexto(sobreTope)} Bs`), '. '] : [];
     // Al cambiar un gasto ya guardado solo se avisa del tope.
     if (mov) { aviso.replaceChildren(...parteTope); return; }
+    if (deCuadre) { aviso.replaceChildren(...parteTope, 'No cuenta como gasto de hoy: es algo que faltaba anotar.'); return; }
     aviso.replaceChildren(
       ...parteTope,
       ...partesAviso(avisoGasto(r, centavos, propio), r.dias > 1).map((p) =>
@@ -94,9 +97,13 @@ export function registrar(ctx, { mov = null, volver = 'inicio' } = {}) {
     };
     delete nuevo.persona;
     delete nuevo.devuelven;
+    // Si a un ajuste de cuadre se le pone categoría, ya está explicado: es un gasto normal.
+    if (nuevo.ajuste && nuevo.categoria !== SIN_EXPLICAR) delete nuevo.ajuste;
+    // Un gasto olvidado que aparece al cuadrar no es de hoy: no cuenta en "llevas hoy".
+    if (deCuadre) nuevo.alCuadrar = true;
     if (paraQuien.valor() === 'devuelven') { nuevo.persona = dev.persona.slice(0, 40); nuevo.devuelven = dev.devuelven; }
     await ctx.almacen.agregarMovimiento(nuevo);
-    if (!mov && ajustes.ultimaCuentaId !== nuevo.cuentaId) await ctx.almacen.actualizarAjustes((a) => ({ ...a, ultimaCuentaId: nuevo.cuentaId }));
+    if (!mov && !sugerido && ajustes.ultimaCuentaId !== nuevo.cuentaId) await ctx.almacen.actualizarAjustes((a) => ({ ...a, ultimaCuentaId: nuevo.cuentaId }));
     await ctx.recargar();
     ctx.deshacer = mov
       ? { texto: 'Cambios guardados.', accion: () => ctx.almacen.agregarMovimiento(mov) }

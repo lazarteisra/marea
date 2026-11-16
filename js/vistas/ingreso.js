@@ -3,20 +3,21 @@ import { el } from '../dom.js';
 import { aCentavos, aBsEnteros, aTexto } from '../dinero.js';
 import { resumen } from '../calculo.js';
 import { ordenarPorUso, crearGuardador } from '../registro.js';
+import { SIN_EXPLICAR } from '../cuadre.js';
 import { campoMonto, grupoChips, horaCorta, fechaHora, botonBorrar } from './piezas.js';
 
-export function ingreso(ctx, { mov = null, volver = 'inicio' } = {}) {
+export function ingreso(ctx, { mov = null, volver = 'inicio', sugerido = null } = {}) {
   const { cuentas, movimientos, ajustes } = ctx.estado;
   const activas = cuentas.filter((c) => !c.archivada);
   const r = resumen(cuentas, movimientos, ajustes, ctx.ahora());
-  const cuentaInicial = mov?.cuentaId ?? (activas.some((c) => c.id === ajustes.ultimaCuentaId) ? ajustes.ultimaCuentaId : activas[0].id);
+  const cuentaInicial = mov?.cuentaId ?? sugerido?.cuentaId ?? (activas.some((c) => c.id === ajustes.ultimaCuentaId) ? ajustes.ultimaCuentaId : activas[0].id);
   const origenes = ordenarPorUso(ajustes.origenes, movimientos, 'origen');
   if (mov && !origenes.includes(mov.origen)) origenes.push(mov.origen);
 
   const aviso = el('p', { class: 'aviso', 'aria-live': 'polite' });
   const guardarBoton = el('button', { class: 'boton boton-pri', type: 'submit', disabled: true }, mov ? 'Guardar cambios' : 'Guardar ingreso');
 
-  const monto = campoMonto(actualizar, mov ? aTexto(mov.monto) : '');
+  const monto = campoMonto(actualizar, mov ? aTexto(mov.monto) : (sugerido?.monto ? aTexto(sugerido.monto) : ''));
   const deDonde = grupoChips('¿De dónde?', origenes.map((o) => ({ valor: o, texto: o })), mov?.origen ?? null, actualizar);
   const aDonde = grupoChips('¿A qué cuenta entró?', activas.map((c) => ({ valor: c.id, texto: c.nombre })), cuentaInicial, actualizar);
 
@@ -41,6 +42,8 @@ export function ingreso(ctx, { mov = null, volver = 'inicio' } = {}) {
       ...(mov ?? { id: idNuevo, tipo: 'ingreso', fecha: ctx.ahora(), nota: '' }),
       monto: centavos, cuentaId: aDonde.valor(), origen: deDonde.valor(),
     };
+    // Si a un ajuste de cuadre se le pone de dónde vino, ya es un ingreso normal.
+    if (nuevo.ajuste && nuevo.origen !== SIN_EXPLICAR) delete nuevo.ajuste;
     await ctx.almacen.agregarMovimiento(nuevo);
     await ctx.recargar();
     ctx.deshacer = mov

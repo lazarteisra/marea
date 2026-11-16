@@ -11,11 +11,29 @@ import { presupuesto } from './vistas/presupuesto.js';
 import { fijos, fijo, pagarFijo } from './vistas/fijos.js';
 import { total, paso, prestamo, cobro } from './vistas/total.js';
 import { categoria } from './vistas/categoria.js';
+import { cuadrar } from './vistas/cuadrar.js';
 import { barraPestanas, VISTAS_CON_BARRA } from './vistas/piezas.js';
 
-const vistas = { primeraVez, inicio, registrar, ingreso, ajustes, movimientos, presupuesto, fijos, fijo, pagarFijo, total, paso, prestamo, cobro, categoria };
+const vistas = { primeraVez, inicio, registrar, ingreso, ajustes, movimientos, presupuesto, fijos, fijo, pagarFijo, total, paso, prestamo, cobro, categoria, cuadrar };
 const raiz = document.getElementById('app');
 let actual = null;
+let enCuadre = false;
+
+/**
+ * Lo contado en un cuadre a medias se compara con los saldos. Si entretanto
+ * se anota, cambia o borra un movimiento fuera de Cuadrar, esa cuenta ya
+ * no sirve: se descarta el borrador y habrá que contar de nuevo.
+ */
+function conCuadreAlDia(almacen) {
+  const soltar = async () => {
+    if (!enCuadre && ctx.estado?.ajustes.cuadre) await almacen.actualizarAjustes((a) => ({ ...a, cuadre: null }));
+  };
+  return {
+    ...almacen,
+    async agregarMovimiento(mov) { await almacen.agregarMovimiento(mov); await soltar(); },
+    async borrarMovimiento(id) { await almacen.borrarMovimiento(id); await soltar(); },
+  };
+}
 
 const ctx = {
   estado: null,     // { cuentas, movimientos, ajustes }
@@ -28,6 +46,8 @@ const ctx = {
 
 function ir(nombre, parametros = {}) {
   actual = nombre;
+  // Dentro de Cuadrar (o de un formulario abierto desde ahí) los movimientos son parte del cuadre.
+  enCuadre = nombre === 'cuadrar' || parametros.volver === 'cuadrar';
   const conBarra = VISTAS_CON_BARRA.includes(nombre);
   let vista;
   try {
@@ -54,7 +74,7 @@ async function recargar() {
 
 async function arrancar() {
   try {
-    ctx.almacen = await abrirAlmacen();
+    ctx.almacen = conCuadreAlDia(await abrirAlmacen());
     await recargar();
   } catch {
     raiz.replaceChildren(el('section', { class: 'pantalla' },

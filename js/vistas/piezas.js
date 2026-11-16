@@ -73,10 +73,10 @@ export function filaMovimiento(m, cuentas, alTocar, ahoraMs = null) {
   let clase = '';
   if (m.tipo === 'gasto') {
     titulo = m.nota || m.categoria;
-    partes = [m.nota ? m.categoria : null, m.paraQuien === 'invite' ? 'invité yo' : null,
+    partes = [m.nota ? m.categoria : null, m.ajuste ? 'ajuste de cuadre' : null, m.alCuadrar ? 'anotado al cuadrar' : null, m.paraQuien === 'invite' ? 'invité yo' : null,
       m.paraQuien === 'devuelven' ? `${m.persona} te devuelve ${aTexto(m.devuelven)}` : null, cuenta, hora];
   } else if (m.tipo === 'ingreso') {
-    titulo = m.origen; partes = [cuenta, hora]; signo = '+'; clase = ' entra';
+    titulo = m.origen; partes = [m.ajuste ? 'ajuste de cuadre' : null, cuenta, hora]; signo = '+'; clase = ' entra';
   } else if (m.tipo === 'paso') {
     titulo = `${cuenta ?? '?'} → ${nombre(m.cuentaDestinoId) ?? '?'}`; partes = ['Paso entre cuentas', hora]; clase = ' neutro';
   } else if (m.tipo === 'prestamo') {

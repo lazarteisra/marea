@@ -77,7 +77,9 @@ export function resumen(cuentas, movimientos, ajustes, ahoraMs) {
   const idsFijos = new Set(estimados.keys());
   let gastadoHoy = 0;
   for (const m of movimientos) {
-    if (m.tipo !== 'gasto' || claveDia(m.fecha) !== hoy) continue;
+    // Un ajuste de cuadre es plata que se fue quién sabe cuándo: no es gasto de hoy.
+    // Tampoco un gasto olvidado que se anotó al cuadrar.
+    if (m.tipo !== 'gasto' || m.ajuste || m.alCuadrar || claveDia(m.fecha) !== hoy) continue;
     // Lo que te van a devolver tampoco es gasto tuyo.
     gastadoHoy += esPagoFijo(m, idsFijos) ? Math.max(0, gastoPropio(m) - estimados.get(m.fijoId)) : gastoPropio(m);
   }
@@ -140,7 +142,8 @@ export function resumenCiclo(cuentas, movimientos, ajustes, ahoraMs) {
     if (claveDia(m.fecha) < r.inicioCiclo) continue;
     if (m.tipo === 'gasto' && !esPagoFijo(m, idsFijos)) gastado += gastoPropio(m);
     else if (m.tipo === 'ingreso' && m.origen === 'Mensualidad') mensualidad += m.monto;
-    else if (m.tipo === 'ingreso') sueltos += m.monto;
+    // Lo que sobró al cuadrar no es un ingreso: solo corrige el saldo.
+    else if (m.tipo === 'ingreso' && !m.ajuste) sueltos += m.monto;
   }
   const queda = Math.max(0, r.disponible);
   return {
