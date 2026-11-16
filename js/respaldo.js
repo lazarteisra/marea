@@ -10,7 +10,8 @@ const MAX_MOVIMIENTOS = 100000;
 export function exportar(datos, ahoraMs) {
   return JSON.stringify({
     app: 'marea', version: VERSION, exportado: ahoraMs,
-    cuentas: datos.cuentas, movimientos: datos.movimientos, ajustes: datos.ajustes,
+    // El bloqueo es de este teléfono (su PIN, su Face ID): no viaja en la copia.
+    cuentas: datos.cuentas, movimientos: datos.movimientos, ajustes: { ...datos.ajustes, bloqueo: null },
   });
 }
 
@@ -125,6 +126,8 @@ function leerAjustes(a, idsCuentas) {
     ultimaCuentaId: ultima, inicio, configurada: a.configurada, fijos,
     topes: topes.map((t) => ({ categoria: t.categoria, monto: t.monto })),
     cuadre: borradorValido(cuadre), ultimoCuadre: ultimoValido(ultimoCuadre),
+    // Un respaldo nunca trae ni quita el bloqueo; la fecha de la última copia sí se conserva.
+    bloqueo: null, ultimaCopia: esEntero(a.ultimaCopia, FECHA_MIN, FECHA_MAX) ? a.ultimaCopia : null,
   };
 }
 

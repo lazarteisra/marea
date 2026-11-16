@@ -207,6 +207,19 @@ button.tarjeta:active { border-color: var(--mar); }
 .dif .preg { margin-top: 14px; }
 .salidas { display: flex; justify-content: space-between; margin-top: 12px; }
 
+.candado { position: fixed; inset: 0; z-index: 10; max-width: 430px; margin: 0 auto; overflow-y: auto; }
+.candado .boton.ancho { width: 100%; margin-top: 28px; }
+.candado-pin { display: grid; grid-template-columns: 1fr auto; gap: 8px; margin-top: 14px; }
+.candado-pin .boton-pri { width: auto; padding: 12px 22px; min-height: 48px; }
+/* El PIN se ve con puntos sin ser un campo de contraseña. */
+.oculto { -webkit-text-security: disc; }
+.pin { letter-spacing: .3em; }
+.pantalla > .boton.ancho { width: 100%; margin-top: 18px; }
+.campo .campo-pin { width: 8ch; letter-spacing: .25em; }
+.enlace.con-punto::after { content: ""; display: inline-block; width: 6px; height: 6px; margin-left: 6px; border-radius: 50%; background: var(--mar); vertical-align: middle; }
+.seccion .enlace.peligro { display: block; margin-top: 10px; }
+.seccion p.toca { color: var(--mar); }
+
 /* ---------- inicio ---------- */
 
 .frase { color: var(--suave); margin-top: 30px; }

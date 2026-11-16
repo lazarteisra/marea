@@ -12,9 +12,12 @@ import { fijos, fijo, pagarFijo } from './vistas/fijos.js';
 import { total, paso, prestamo, cobro } from './vistas/total.js';
 import { categoria } from './vistas/categoria.js';
 import { cuadrar } from './vistas/cuadrar.js';
+import { pin, verificar } from './vistas/pin.js';
+import { crearCandado } from './vistas/candado.js';
+import { debeBloquear, bloqueoValido } from './bloqueo.js';
 import { barraPestanas, VISTAS_CON_BARRA } from './vistas/piezas.js';
 
-const vistas = { primeraVez, inicio, registrar, ingreso, ajustes, movimientos, presupuesto, fijos, fijo, pagarFijo, total, paso, prestamo, cobro, categoria, cuadrar };
+const vistas = { primeraVez, inicio, registrar, ingreso, ajustes, movimientos, presupuesto, fijos, fijo, pagarFijo, total, paso, prestamo, cobro, categoria, cuadrar, pin, verificar };
 const raiz = document.getElementById('app');
 let actual = null;
 let enCuadre = false;
@@ -65,7 +68,7 @@ function ir(nombre, parametros = {}) {
   raiz.replaceChildren(...[vista, conBarra ? barraPestanas(ctx, nombre) : null].filter(Boolean));
   window.scrollTo(0, 0);
   // Dentro del mismo toque, para que el iPhone abra el teclado.
-  raiz.querySelector('[data-foco]')?.focus();
+  if (!raiz.hidden) raiz.querySelector('[data-foco]')?.focus();
 }
 
 async function recargar() {
@@ -82,14 +85,47 @@ async function arrancar() {
       el('p', { class: 'parrafo' }, 'No se pudieron abrir tus datos en este navegador. Si estás en modo privado, sal de él y vuelve a abrir Marea.')));
     return;
   }
+  // Primero el candado: si pintar la pantalla fallara, igual queda cerrado.
+  candado.bloquear();
   ir(ctx.estado.ajustes.configurada ? 'inicio' : 'primeraVez');
   // Pide al navegador que no borre los datos por falta de espacio.
   navigator.storage?.persist?.().catch(() => {});
 }
 
-// Al volver a la app puede haber cambiado el día: Inicio se recalcula.
+// Por aquí se lee y se cambia la cerradura (el candado y la pantalla que verifica).
+ctx.puerta = {
+  leer: () => ctx.estado?.ajustes.bloqueo ?? null,
+  guardar: async (cambio) => {
+    // Siempre sobre el dato saneado, para que un contador dañado no rompa la cuenta de fallos.
+    await ctx.almacen.actualizarAjustes((a) => ({ ...a, bloqueo: cambio(bloqueoValido(a.bloqueo)) }));
+    await recargar();
+  },
+  ahora: () => ctx.ahora(),
+};
+const candado = crearCandado({
+  raiz,
+  puerta: ctx.puerta,
+  // Al desbloquear puede haber cambiado el día: Inicio se recalcula.
+  alAbrir: () => { if (actual === 'inicio') ir('inicio'); },
+});
+
+let ocultoDesde = null;
+// Algunas veces el teléfono avisa por aquí antes que por "visibilitychange".
+window.addEventListener('pagehide', () => { ocultoDesde ??= Date.now(); candado.cubrir(); });
 document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible' && actual === 'inicio') ir('inicio');
+  if (document.visibilityState === 'hidden') {
+    ocultoDesde = Date.now();
+    // Se tapa ya, para que el selector de apps no muestre los números.
+    candado.cubrir();
+    return;
+  }
+  const desde = ocultoDesde;
+  ocultoDesde = null;
+  if (candado.estaCerrado()) return;
+  if (ctx.estado?.ajustes.bloqueo && debeBloquear(desde, Date.now())) { candado.bloquear(); return; }
+  candado.descubrir();
+  // Al volver a la app puede haber cambiado el día: Inicio se recalcula.
+  if (actual === 'inicio') ir('inicio');
 });
 
 arrancar();
@@ -100,6 +136,6 @@ if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('sw.js').catch(() => {});
   // Si llega una versión nueva mientras está en Inicio, la carga de una vez.
   navigator.serviceWorker.addEventListener('controllerchange', () => {
-    if (teniaVersion && actual === 'inicio') location.reload();
+    if (teniaVersion && actual === 'inicio' && !candado.estaCerrado()) location.reload();
   });
 }

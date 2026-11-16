@@ -3,6 +3,7 @@
 import { el } from '../dom.js';
 import { resumen } from '../calculo.js';
 import { avisoDeshacer } from './piezas.js';
+import { estadoCopia } from '../bloqueo.js';
 import { aTexto, aBsEnteros } from '../dinero.js';
 
 /** Textos de Inicio a partir del resumen. Pura, para poder probarla. */
@@ -32,6 +33,7 @@ export function inicio(ctx) {
   const { cuentas, movimientos, ajustes } = ctx.estado;
   const r = resumen(cuentas, movimientos, ajustes, ctx.ahora());
   const t = textosInicio(r);
+  const tocaCopia = estadoCopia(ajustes, movimientos.length > 0, ctx.ahora()).toca;
 
   const avance = el('i');
   avance.style.width = (r.porDia > 0 ? Math.min(100, Math.round((r.gastadoHoy / r.porDia) * 100)) : (r.gastadoHoy > 0 ? 100 : 0)) + '%';
@@ -39,7 +41,7 @@ export function inicio(ctx) {
   return el('section', { class: 'pantalla' },
     el('div', { class: 'barra-sup' },
       el('span', {}, fechaLarga(ctx.ahora())),
-      el('button', { class: 'enlace', type: 'button', onclick: () => ctx.ir('ajustes') }, 'Ajustes')),
+      el('button', { class: 'enlace' + (tocaCopia ? ' con-punto' : ''), type: 'button', 'aria-label': tocaCopia ? 'Ajustes: conviene guardar una copia de tus datos' : null, onclick: () => ctx.ir('ajustes') }, 'Ajustes')),
 
     el('p', { class: 'frase' }, 'Hoy puedes gastar'),
     el('p', { class: 'num' + (t.numero.length > 3 ? ' largo' : '') }, t.numero, el('span', { class: 'bs' }, 'Bs')),

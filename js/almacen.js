@@ -2,6 +2,7 @@
 import { fijosValidos } from './fijos.js';
 import { topesValidos } from './categorias.js';
 import { borradorValido, ultimoValido, marcasLimpias } from './cuadre.js';
+import { bloqueoValido } from './bloqueo.js';
 
 export function cuentasPorDefecto() {
   return ['Efectivo', 'BNB', 'Altoke'].map((nombre, orden) => ({
@@ -36,7 +37,7 @@ export function ponerAlDia(datos) {
   }
   return {
     ...datos,
-    ajustes: { ...datos.ajustes, categorias, cuadre: borradorValido(datos.ajustes.cuadre), ultimoCuadre: ultimoValido(datos.ajustes.ultimoCuadre), fijos: fijosValidos(datos.ajustes.fijos), topes: topesValidos(Array.isArray(datos.ajustes.topes) ? datos.ajustes.topes.map((t) => (t && typeof t === 'object' ? { ...t, categoria: nombre(t.categoria) } : t)) : []) },
+    ajustes: { ...datos.ajustes, categorias, bloqueo: bloqueoValido(datos.ajustes.bloqueo), cuadre: borradorValido(datos.ajustes.cuadre), ultimoCuadre: ultimoValido(datos.ajustes.ultimoCuadre), fijos: fijosValidos(datos.ajustes.fijos), topes: topesValidos(Array.isArray(datos.ajustes.topes) ? datos.ajustes.topes.map((t) => (t && typeof t === 'object' ? { ...t, categoria: nombre(t.categoria) } : t)) : []) },
     movimientos: datos.movimientos.filter(movimientoEntendible).map((m) => {
       let limpio = RENOMBRADAS.has(m.categoria) ? { ...m, categoria: nombre(m.categoria) } : m;
       // Un gasto sin categoría legible se muestra como "Otro" en vez de romper las listas.
@@ -65,6 +66,8 @@ export function ajustesPorDefecto() {
     topes: [],           // tope de gasto por ciclo: { categoria, monto }
     cuadre: null,        // cuadre a medias: { fecha, reales: [{ cuentaId, monto }] }
     ultimoCuadre: null,  // último cuadre terminado: { fecha, total }
+    bloqueo: null,       // cerradura de este teléfono: { pin, credencial, fallos, ultimo }; no va al respaldo
+    ultimaCopia: null,   // cuándo se exportó la última copia (ms)
     ultimaCuentaId: null,
     inicio: null,        // día en que empezó a usar la app, "2026-11-14"
     configurada: false,

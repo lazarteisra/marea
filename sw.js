@@ -2,7 +2,7 @@
 // CACHE y ARCHIVOS los escribe herramientas/sellar.mjs; no editarlos a mano.
 // Solo guarda archivos de la app; los datos de la persona nunca pasan por aquí.
 
-const CACHE = 'marea-48a1584216';
+const CACHE = 'marea-a58f58ccd0';
 const ARCHIVOS = [
   "./",
   "css/marea.css",
@@ -14,6 +14,7 @@ const ARCHIVOS = [
   "index.html",
   "js/almacen.js",
   "js/app.js",
+  "js/bloqueo.js",
   "js/calculo.js",
   "js/categorias.js",
   "js/cuadre.js",
@@ -28,6 +29,7 @@ const ARCHIVOS = [
   "js/texto.js",
   "js/total.js",
   "js/vistas/ajustes.js",
+  "js/vistas/candado.js",
   "js/vistas/categoria.js",
   "js/vistas/cuadrar.js",
   "js/vistas/fijos.js",
@@ -35,6 +37,7 @@ const ARCHIVOS = [
   "js/vistas/inicio.js",
   "js/vistas/movimientos.js",
   "js/vistas/piezas.js",
+  "js/vistas/pin.js",
   "js/vistas/presupuesto.js",
   "js/vistas/primeraVez.js",
   "js/vistas/registrar.js",
